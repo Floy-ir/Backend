@@ -7,7 +7,7 @@ from .models import City
 logger = logging.getLogger(__name__)
 
 
-class FileStorageService(interfaces.AbstractFlightCityService):
+class FlightCityService(interfaces.AbstractFlightCityService):
     def __init__(
             self,
             claim: accounts_interfaces.Session,
