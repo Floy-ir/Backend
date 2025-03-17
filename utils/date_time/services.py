@@ -1,0 +1,66 @@
+from datetime import datetime, timedelta, timezone
+from .interfaces import  AbstractDateTime
+from khayyam import JalaliDate
+import pytz
+
+
+class DateTimeUtils(AbstractDateTime):
+    def get_current_timestamp(self) -> int:
+        return int(datetime.now().timestamp())
+
+    def get_start_timestamp_of_day_from_today(self, timedelta_days: int) -> int:
+        now = datetime.now()
+        next_day_midnight = datetime(now.year, now.month, now.day) + timedelta(days=timedelta_days)
+        return int(next_day_midnight.timestamp())
+
+    def get_end_of_day_timestamp_from_today(self, timedelta_days: int) -> int:
+        now = datetime.now()
+        next_day_midnight = datetime(now.year, now.month, now.day) + timedelta(days=timedelta_days + 1)
+        return int(next_day_midnight.timestamp() - 1)
+
+    def convert_timestamp_to_date(self, timestamp: int) -> str:
+        date_obj = datetime.fromtimestamp(timestamp)
+        formatted_date = date_obj.strftime('%Y-%m-%d')
+        return formatted_date
+
+    def convert_date_time_to_timestamp(self, time: str, date: str) -> int:
+        # Combine date and time into a single string
+        datetime_str = f"{date} {time}"
+
+        # Parse the datetime
+        local_datetime = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
+
+        gmt_plus_3_30 = pytz.FixedOffset(210)  # 210 minutes = 3 hours 30 minutes
+
+        localized_datetime = gmt_plus_3_30.localize(local_datetime)
+
+        # Convert to timestamp (seconds since epoch)
+        timestamp = int(localized_datetime.timestamp())
+
+        return timestamp
+
+    def convert_iso_datetime_to_timestamp(self, datetime_str: str) -> int:
+        temp = self._convert_to_iso_format_with_offset(datetime_str)
+        dt = datetime.strptime(temp, "%Y-%m-%dT%H:%M:%S%z")
+        return int(dt.timestamp())
+
+    def miladi_to_shamsi(self, date_str, separator: str = '-') -> str:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        jalali_date = JalaliDate(date_obj)
+
+        formatted_date = jalali_date.strftime(f"%Y{separator}%m{separator}%d")
+        return formatted_date
+
+    def _convert_to_iso_format_with_offset(self, date_time_str):
+        try:
+            iso_format = datetime.fromisoformat(date_time_str)
+            if iso_format.tzinfo is not None:
+                return date_time_str
+            else:
+                return iso_format.replace(tzinfo=timezone(timedelta(hours=3, minutes=30))).isoformat()
+        except ValueError:
+            try:
+                custom_format = datetime.strptime(date_time_str, '%Y-%m-%dT%H:%M')
+                return custom_format.replace(tzinfo=timezone(timedelta(hours=3, minutes=30))).isoformat()
+            except ValueError:
+                raise ValueError(f"Input date-time '{date_time_str}' is not in a recognized format")
