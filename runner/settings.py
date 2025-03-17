@@ -47,16 +47,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
-
-    #apps
-    'apps.accounts',
-    'apps.tours',
-    'apps.settings',
-    'apps.file_storage',
-    'apps.carriers',
-    'apps.blog',
-    'apps.statistics',
-    'apps.flights',
 ]
 
 MIDDLEWARE = [
