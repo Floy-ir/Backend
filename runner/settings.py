@@ -47,6 +47,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+
+    # apps
+    'apps.flight_city'
 ]
 
 MIDDLEWARE = [
@@ -159,9 +162,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'runner.authentications.BearerTokenAuthentication',
-    ],
+    # 'DEFAULT_AUTHENTICATION_CLASSES': [
+    #     'runner.authentications.BearerTokenAuthentication',
+    # ],
     'EXCEPTION_HANDLER': 'libs.exception_handler.custom_exception_handler'
 }
 
