@@ -1,8 +1,6 @@
 from .dataclasses import (
     FileMetadata,
     UploadMetadata,
-    UploadMetadataResult,
-    UploadMetadataFilter,
     UploadRequest,
     ImagesLink
 )
