@@ -28,16 +28,16 @@ class FileStorageService(interfaces.AbstractFileStorageService):
     def upload_files(
             self,
             caller: accounts_interfaces.Session,
-            upload_request: interfaces.UploadRequest
+            request: interfaces.UploadRequest
     ) -> interfaces.UploadMetadata:
-        print(f'caller: {caller}, upload_request: {upload_request.uid}, files: {[file.name for file in upload_request.files]}')
+        print(f'caller: {caller}, request: {request.uid}, files: {[file.name for file in request.files]}')
         if caller.user.user_type != accounts_interfaces.UserType.INTERNAL:
             print(f"user {caller} is not admin.")
             raise interfaces.OnlyAdminException()
 
         try:
             upload_metadata, created = UploadMetadata.objects.get_or_create(
-                uid=upload_request.uid,
+                uid=request.uid,
                 defaults={
                     'uploaded_at': self.date_time_utils.get_current_timestamp(),
                     'uploaded_by': caller.user_uid
@@ -49,15 +49,15 @@ class FileStorageService(interfaces.AbstractFileStorageService):
             for file in existing_files:
                 self.minio_client.remove_object(
                     bucket_name=self.minio_bucket_name,
-                    object_name=f"{upload_request.uid}/{file.file_name}"
+                    object_name=f"{request.uid}/{file.file_name}"
                 )
             existing_files.delete()
 
             file_metadata_list = []
-            for file in upload_request.files:
+            for file in request.files:
                 self.minio_client.put_object(
                     bucket_name=self.minio_bucket_name,
-                    object_name=f"{upload_request.uid}/{file.name}",
+                    object_name=f"{request.uid}/{file.name}",
                     data=io.BytesIO(file.buffer),
                     length=len(file.buffer),
                 )

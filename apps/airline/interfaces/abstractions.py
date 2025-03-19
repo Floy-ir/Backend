@@ -4,9 +4,15 @@ from abc import ABC, abstractmethod
 
 class AbstractAirlineService(ABC):
     @abstractmethod
-    def get_airline(self, uid: str) -> Airline:
+    def get_airline(self, uid: str) -> AirlineDTO:
         """
-        this
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def upload_image(self, request: UploadImageReq) -> AirlineDTO:
+        """
+        this method is for upload image for every airline.
         """
         raise NotImplementedError
 
@@ -16,4 +22,13 @@ class AbstractAirlineService(ABC):
         this method will give service to flight service when want to return airline of flight.
         """
         raise NotImplementedError
+
+
+    @abstractmethod
+    def get_airline_by_name(self, name: str) -> AirlineDTO:
+        """
+        this method is used to get airline by name and if it doesn't exist it create a new one.
+        """
+        raise NotImplementedError
+
 
