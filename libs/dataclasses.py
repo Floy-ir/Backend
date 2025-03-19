@@ -39,7 +39,7 @@ UUIDField = Annotated[str, StringConstraints(pattern=r'^[a-zA-Z0-9_\.\-]{4,64}$'
 IPField = str # todo: change this to validate ips
 URLField = str # todo: change this to validate url
 PositiveIntegerField = Annotated[NonNegativeInt, Field(gt=0)]
-
+PasswordField = str
 
 class File(BaseModel):
     buffer: bytes

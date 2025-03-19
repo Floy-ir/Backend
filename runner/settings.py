@@ -47,9 +47,15 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+    'health_check',  # Core
+    'health_check.db',  # Database
+    'health_check.cache',  # Cache
+    'health_check.storage',  # File storage
 
     # apps
-    'apps.flight_city'
+    'apps.file_storage',
+    'apps.flight_city',
+    'apps.airline',
 ]
 
 MIDDLEWARE = [
@@ -141,7 +147,7 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = 'accounts.User'
+# AUTH_USER_MODEL = 'accounts.User'
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
