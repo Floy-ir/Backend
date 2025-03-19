@@ -5,7 +5,7 @@ from .dataclasses import UploadMetadata, UploadRequest, UploadMetadataFilter, Up
 
 class AbstractFileStorageService(abc.ABC):
     def upload_files(self, caller: accounts_interfaces.Session,
-                     upload_request: UploadRequest) -> UploadMetadata:
+                     request: UploadRequest) -> UploadMetadata:
         """ This method should not be exposed as a HTTP endpoint. only other apps can call it.
         It validates files based on their names, sizes, count, etc. if OK, it saves them in its internal storage.
 
