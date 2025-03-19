@@ -45,7 +45,7 @@ class AirlineService(interfaces.AbstractAirlineService):
         try:
             airline = Airline.objects.get(uid=request.uid)
         except Airline.DoesNotExist:
-            logger.debug(f"airline with uid {request.uid} doesn't exist}")
+            logger.debug(f"airline with uid {request.uid} doesn't exist")
             raise interfaces.AirlineNotFound()
 
         image_link = None
