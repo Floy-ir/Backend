@@ -11,24 +11,45 @@ class SeatClass(str, Enum):
     BASIC_ECONOMY = 'Basic Economy'
 
 
-class GetFlightsRequest(dataclasses.BaseModel):
+class GetFlightsRequest(dataclasses.BaseFilter):
     # flights filters
     airlines: List[dataclasses.UUIDField] | None = None
     origin: str
     destination: str
-    departure_time: int
-    arrival_time: int | None = None
+    departure_timestamp__gte: int
+    departure_timestamp__lte: int
+    arrival_timestamp__gte: int | None = None
+    arrival_timestamp__lte: int | None = None
     allowed_weights: List[int] | None = None
     seat_classes: List[SeatClass] | None = None
     # website filters
+    website_uids: List[str] | None = None
     price__lte: float | None = None
     price__gte: float | None = None
     remaining_seats__gte: int | None = 0
     is_valid: bool | None = True
 
 
+class WebsiteDTO(dataclasses.BaseModel):
+    uid: dataclasses.UUIDField # TODO: return detail
+    price: float
+    redirect_url: dataclasses.URLField
+    remaining_seat: int
+
+
+class FlightDTO(dataclasses.BaseModel):
+    airline: dataclasses.UUIDField # TODO: return detail
+    origin: str
+    destination: str
+    departure_timestamp: int
+    arrival_timestamp: int
+    allowed_weight: int
+    seat_class: SeatClass
+    websites: List[WebsiteDTO]
+
 class GetFlightsResponse(dataclasses.BaseModel):
-    pass
+    count: int
+    result: List[FlightDTO]
 
 
 class CreateFlightRequest(dataclasses.BaseModel):

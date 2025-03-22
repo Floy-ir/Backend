@@ -1,4 +1,25 @@
 from django.db import models
+from django.db.models import Count, Q
+
+
+class FlightManager(models.Manager):
+    def filter_flights_by_sites(self, website_uids, website_filters, flight_filters, prefetch_websites=True):
+        queryset = self.get_queryset()
+
+        if flight_filters:
+            queryset = queryset.filter(**flight_filters)
+
+        if website_uids:
+            website_q = Q(**website_filters)
+
+            queryset = queryset.filter(
+                websites__uid__in=website_uids
+            ).filter(website_q)
+
+        if prefetch_websites:
+            queryset = queryset.prefetch_related('websites')
+
+        return queryset.distinct()
 
 
 class Flight(models.Model):
@@ -32,10 +53,12 @@ class Flight(models.Model):
     def __str__(self):
         return f"{self.airline} {self.origin} -> {self.destination} ({self.seat_class})"
 
+    objects = FlightManager()
+
 
 class Website(models.Model):
     uid = models.CharField(max_length=128, unique=True)
-    flight = models.ForeignKey(Flight, on_delete=models.CASCADE)
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name='websites')
     price = models.DecimalField(max_digits=15, decimal_places=3)
     redirect_url = models.CharField(max_length=128)
     remaining_seat = models.IntegerField()
