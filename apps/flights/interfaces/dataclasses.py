@@ -47,9 +47,35 @@ class FlightDTO(dataclasses.BaseModel):
     seat_class: SeatClass
     websites: List[WebsiteDTO]
 
+
+class FlightWithoutWebsiteDTO(dataclasses.BaseModel):
+    airline: dataclasses.UUIDField # TODO: return detail
+    origin: str
+    destination: str
+    departure_timestamp: int
+    arrival_timestamp: int
+    allowed_weight: int
+    seat_class: SeatClass
+    price: float
+    redirect_url: dataclasses.URLField
+    website_uid: dataclasses.UUIDField
+
+
 class GetFlightsResponse(dataclasses.BaseModel):
     count: int
     result: List[FlightDTO]
+
+
+class GetCheapestTicketRequest(dataclasses.BaseModel):
+    origin: str
+    destination: str
+    reference_timestamp: int
+    forward_day: int
+
+
+class GetCheapestResponse(dataclasses.BaseModel):
+    count: int
+    results: List[FlightWithoutWebsiteDTO]
 
 
 class CreateFlightRequest(dataclasses.BaseModel):

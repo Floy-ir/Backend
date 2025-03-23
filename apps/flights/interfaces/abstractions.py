@@ -7,5 +7,9 @@ class AbstractFlightsService(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_cheapest_ticket(self, request: GetCheapestTicketRequest) -> GetCheapestResponse:
+        raise NotImplementedError
+
+    @abstractmethod
     def create_flight(self, request: CreateFlightRequest):
         raise NotImplementedError
