@@ -4,6 +4,7 @@ from typing import List
 from utils.date_time import interfaces as date_time_interfaces
 from apps.airlines import interfaces as airlines_interfaces
 from .models import Flight, Website
+from constants import SECOND_IN_A_DAY
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +47,13 @@ class FlightsService(interfaces.AbstractFlightsService):
         return result
 
     def get_cheapest_ticket(self, request: interfaces.GetCheapestTicketRequest) -> interfaces.GetCheapestResponse:
+        logger.info(f"request: {request}")
         results: List[interfaces.FlightWithoutWebsiteDTO] = []
         base_timestamp = request.reference_timestamp
 
         for day_offset in range(request.forward_day):
-            start_ts = base_timestamp + day_offset * 86400
-            end_ts = start_ts + 86400
+            start_ts = base_timestamp + day_offset * SECOND_IN_A_DAY
+            end_ts = start_ts + SECOND_IN_A_DAY
 
             cheapest_flight = (
                 Flight.objects.filter(
@@ -68,10 +70,12 @@ class FlightsService(interfaces.AbstractFlightsService):
             if cheapest_flight:
                 results.append(self._convert_flight_without_website_to_dto(cheapest_flight))
 
-        return interfaces.GetCheapestResponse(
+        result = interfaces.GetCheapestResponse(
             count=len(results),
             results=results
         )
+        logger.info("result: ", result)
+        return result
 
     def create_flight(self, request: interfaces.CreateFlightRequest):
         pass
