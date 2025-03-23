@@ -49,6 +49,9 @@ class Flight(models.Model):
         choices=SEAT_CLASSES,
         default=ECONOMY_CLASS,
     )
+    cheapest_price = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    cheapest_redirect_url = models.CharField(max_length=256, null=True, blank=True)
+    cheapest_website_uid = models.CharField(max_length=128, null=True, blank=True)
 
     def __str__(self):
         return f"{self.airline} {self.origin} -> {self.destination} ({self.seat_class})"
