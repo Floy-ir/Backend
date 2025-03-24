@@ -1,5 +1,5 @@
 from .interfaces import ICacheService
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 from .client import RedisClient
 import json
 
