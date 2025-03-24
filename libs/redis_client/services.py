@@ -7,8 +7,9 @@ class CacheService(ICacheService):
     def __init__(self, hostname: str, port: int, db: int):
         self.redis = RedisClient().get_client(host=hostname, port=port, db=db)
 
-    def get(self, key: str) -> Optional[str]:
-        return self.redis.get(key)
+    def get(self, key: str) -> Optional[dict]:
+        value = self.redis.get(key)
+        return json.loads(value) if value is not None else None
 
     def set_json(self, key: str, value: Any, ex: Optional[int] = None):
         json_value = json.dumps(value)
