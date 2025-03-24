@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 
 class ICacheService(ABC):
     @abstractmethod
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> Optional[dict]:
         """
         Retrieve the string value stored at the specified key.
 
