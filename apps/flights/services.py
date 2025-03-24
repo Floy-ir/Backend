@@ -120,6 +120,7 @@ class FlightsService(interfaces.AbstractFlightsService):
 
             if cheapest_flight:
                 results.append(self._convert_flight_dict_without_website_to_dto(cheapest_flight))
+                continue
 
             cheapest_flight = (
                 Flight.objects.filter(
@@ -134,7 +135,9 @@ class FlightsService(interfaces.AbstractFlightsService):
             )
 
             if cheapest_flight:
-                results.append(self._convert_flight_db_without_website_to_dto(cheapest_flight))
+                cheapest_dto = self._convert_flight_db_without_website_to_dto(cheapest_flight)
+                self.cache_service.set(cache_key, cheapest_dto)
+                results.append(self._convert_flight_dict_without_website_to_dto(cheapest_flight))
 
         result = interfaces.GetCheapestResponse(
             count=len(results),
