@@ -1,15 +1,16 @@
+from .interfaces import ICacheService
 from typing import List, Optional, Any
 from .client import RedisClient
 import json
 
-class CacheService:
+class CacheService(ICacheService):
     def __init__(self, hostname: str, port: int, db: int):
         self.redis = RedisClient().get_client(host=hostname, port=port, db=db)
 
     def get(self, key: str) -> Optional[str]:
         return self.redis.get(key)
 
-    def set_json(self, key: str, value: dict, ex: Optional[int] = None):
+    def set_json(self, key: str, value: Any, ex: Optional[int] = None):
         json_value = json.dumps(value)
         self.redis.set(key, json_value, ex=ex)
 

@@ -26,7 +26,7 @@ class ICacheService(ABC):
         pass
 
     @abstractmethod
-    def set_json(self, key: str, value: dict, ex: Optional[int] = None) -> None:
+    def set_json(self, key: str, value: Any, ex: Optional[int] = None) -> None:
         """
         Set a dictionary value (converted to JSON) in the cache.
 
