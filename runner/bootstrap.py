@@ -75,6 +75,7 @@ class Bootstrapper:
             AirlineService(
                 claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
                 file_storage_service=self._file_storage_service,
+                cache_service=self._cache_service,
             )
         )
 
