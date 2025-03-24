@@ -1,6 +1,7 @@
 import logging
 from uuid import uuid4
 from .models import Airline
+from typing import Dict
 from . import interfaces
 from apps.accounts import interfaces as accounts_interfaces
 from apps.file_storage import interfaces as file_storage_interfaces
@@ -29,13 +30,13 @@ class AirlineService(interfaces.AbstractAirlineService):
         result = self._convert_airline_to_dataclass(carrier)
         return result
 
-    def get_airlines(self, request: interfaces.AirlineListReq) -> interfaces.Airlines:
+    def get_airlines(self, request: interfaces.AirlineListReq) -> Dict[str, interfaces.AirlineDTO]:
         airlines = Airline.objects.filter(uid__in=request.uid_list)
 
-        return interfaces.Airlines(
-            count=airlines.count(),
-            results=[self._convert_airline_to_dataclass(airline) for airline in airlines]
-        )
+        return {
+            airline.uid: self._convert_airline_to_dataclass(airline)
+            for airline in airlines
+        }
 
     def upload_image(self, request: interfaces.UploadImageReq) -> interfaces.AirlineDTO:
         # TODO: check caller or not?!

@@ -1,5 +1,6 @@
 from .dataclasses import *
 from abc import ABC, abstractmethod
+from typing import Dict
 
 
 class AbstractAirlineService(ABC):
@@ -17,7 +18,7 @@ class AbstractAirlineService(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_airlines(self, request: AirlineListReq) -> Airlines:
+    def get_airlines(self, request: AirlineListReq) -> Dict[str, AirlineDTO]:
         """
         this method will give service to flight service when want to return airline of flight.
         """

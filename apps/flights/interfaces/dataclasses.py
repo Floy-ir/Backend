@@ -1,6 +1,7 @@
 from libs import dataclasses
 from typing import List
 from enum import Enum
+from typing import Dict
 
 
 class SeatClass(str, Enum):
@@ -30,6 +31,12 @@ class GetFlightsRequest(dataclasses.BaseFilter):
     is_valid: bool | None = True
 
 
+class Airline(dataclasses.BaseModel):
+    uid: dataclasses.UUIDField
+    name: str
+    image: dataclasses.URLField | None = None
+
+
 class WebsiteDTO(dataclasses.BaseModel):
     uid: dataclasses.UUIDField # TODO: return detail
     price: float
@@ -38,7 +45,7 @@ class WebsiteDTO(dataclasses.BaseModel):
 
 
 class FlightDTO(dataclasses.BaseModel):
-    airline: dataclasses.UUIDField # TODO: return detail
+    airline: Airline
     origin: str
     destination: str
     departure_timestamp: int
@@ -61,8 +68,31 @@ class FlightWithoutWebsiteDTO(dataclasses.BaseModel):
     website_uid: dataclasses.UUIDField
 
 
+class AirlineFilters(dataclasses.BaseModel):
+    uid: dataclasses.UUIDField
+    name: str
+    image: dataclasses.URLField
+    min_price: float
+
+
+class WebsiteFilters(dataclasses.BaseModel):
+    uid: dataclasses.UUIDField
+    name: str
+    image: dataclasses.URLField
+    min_price: float
+
+
+class GetFlightsFilters(dataclasses.BaseModel):
+    min_price: float
+    max_price: float
+    allowed_weights: List[int]
+    seat_classes: List[SeatClass]
+    airlines: List[AirlineFilters]
+    websites: List[WebsiteFilters]
+
 class GetFlightsResponse(dataclasses.BaseModel):
     count: int
+    filters: GetFlightsFilters
     result: List[FlightDTO]
 
 
