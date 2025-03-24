@@ -3,6 +3,7 @@ from . import interfaces
 from typing import List
 from utils.date_time import interfaces as date_time_interfaces
 from apps.airlines import interfaces as airlines_interfaces
+from apps.accounts import interfaces as accounts_interfaces
 from .models import Flight, Website
 from constants import SECOND_IN_A_DAY
 
@@ -11,9 +12,11 @@ logger = logging.getLogger(__name__)
 
 class FlightsService(interfaces.AbstractFlightsService):
     def __init__(self,
+                 claim: accounts_interfaces.Session,
                  date_time_utils: date_time_interfaces.AbstractDateTime,
                  airlines_service: airlines_interfaces.AbstractAirlineService
                  ):
+        self.claim = claim
         self.airline_details = None
         self.date_time = date_time_utils
         self.airlines_service = airlines_service
