@@ -137,7 +137,7 @@ class FlightsService(interfaces.AbstractFlightsService):
 
 
     def _convert_airline_to_dto(self, airline_uid: str) -> interfaces.Airline:
-        airline_detail = self.airlines_details[airline_uid]
+        airline_detail = self.airline_details[airline_uid]
         return interfaces.Airline(
             uid=airline_detail.uid,
             name=airline_detail.name,
