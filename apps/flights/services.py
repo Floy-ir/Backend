@@ -3,6 +3,8 @@ from . import interfaces
 from typing import List
 from utils.date_time import interfaces as date_time_interfaces
 from apps.airlines import interfaces as airlines_interfaces
+from apps.accounts import interfaces as accounts_interfaces
+from libs.redis_client import interfaces as cache_interfaces
 from .models import Flight, Website
 from constants import SECOND_IN_A_DAY
 
@@ -11,12 +13,16 @@ logger = logging.getLogger(__name__)
 
 class FlightsService(interfaces.AbstractFlightsService):
     def __init__(self,
+                 claim: accounts_interfaces.Session,
                  date_time_utils: date_time_interfaces.AbstractDateTime,
-                 airlines_service: airlines_interfaces.AbstractAirlineService
+                 airlines_service: airlines_interfaces.AbstractAirlineService,
+                 cache_service: cache_interfaces.ICacheService
                  ):
+        self.claim = claim
         self.airline_details = None
         self.date_time = date_time_utils
         self.airlines_service = airlines_service
+        self.cache_service = cache_service
 
     def get_flights(self, request: interfaces.GetFlightsRequest) -> interfaces.GetFlightsResponse:
         logger.info(f"request: {request}")
@@ -109,6 +115,12 @@ class FlightsService(interfaces.AbstractFlightsService):
         for day_offset in range(request.forward_day):
             start_ts = base_timestamp + day_offset * SECOND_IN_A_DAY
             end_ts = start_ts + SECOND_IN_A_DAY
+            cache_key = f"flights:cheapest:{start_ts}:{end_ts}"
+            cheapest_flight = self.cache_service.get(cache_key)
+
+            if cheapest_flight:
+                results.append(self._convert_flight_dict_without_website_to_dto(cheapest_flight))
+                continue
 
             cheapest_flight = (
                 Flight.objects.filter(
@@ -123,7 +135,9 @@ class FlightsService(interfaces.AbstractFlightsService):
             )
 
             if cheapest_flight:
-                results.append(self._convert_flight_without_website_to_dto(cheapest_flight))
+                cheapest_dto = self._convert_flight_db_without_website_to_dto(cheapest_flight)
+                self.cache_service.set(cache_key, cheapest_dto)
+                results.append(self._convert_flight_dict_without_website_to_dto(cheapest_flight))
 
         result = interfaces.GetCheapestResponse(
             count=len(results),
@@ -156,9 +170,10 @@ class FlightsService(interfaces.AbstractFlightsService):
             websites=[self._convert_website_to_dto(website) for website in flight.websites.all()],
         )
 
-    def _convert_flight_without_website_to_dto(self, flight: Flight) -> interfaces.FlightWithoutWebsiteDTO:
+    @staticmethod
+    def _convert_flight_db_without_website_to_dto(flight: Flight) -> interfaces.FlightWithoutWebsiteDTO:
         return interfaces.FlightWithoutWebsiteDTO(
-            airline=self._convert_airline_to_dto(flight.airline),
+            airline=flight.airline,
             origin=flight.origin,
             destination=flight.destination,
             departure_timestamp=flight.departure_timestamp,
@@ -168,6 +183,21 @@ class FlightsService(interfaces.AbstractFlightsService):
             price=flight.cheapest_price,
             redirect_url=flight.cheapest_redirect_url,
             website_uid=flight.cheapest_website_uid,
+        )
+
+    @staticmethod
+    def _convert_flight_dict_without_website_to_dto(flight: dict) -> interfaces.FlightWithoutWebsiteDTO:
+        return interfaces.FlightWithoutWebsiteDTO(
+            airline=flight["airline"],
+            origin=flight["origin"],
+            destination=flight["destination"],
+            departure_timestamp=flight["departure_timestamp"],
+            arrival_timestamp=flight["arrival_timestamp"],
+            allowed_weight=flight["allowed_weight"],
+            seat_class=flight["seat_class"],
+            price=flight["cheapest_price"],
+            redirect_url=flight["cheapest_redirect_url"],
+            website_uid=flight["cheapest_website_uid"],
         )
 
     @staticmethod

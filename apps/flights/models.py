@@ -21,6 +21,7 @@ class FlightManager(models.Manager):
 
         return queryset.distinct()
 
+# TODO: add crcn policy for every website
 
 class Flight(models.Model):
     FIRST_CLASS = 'First Class'
