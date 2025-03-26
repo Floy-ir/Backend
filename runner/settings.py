@@ -55,7 +55,8 @@ INSTALLED_APPS = [
     # apps
     'apps.file_storage',
     'apps.flight_city',
-    'apps.airline',
+    'apps.airlines',
+    'apps.flights'
 ]
 
 MIDDLEWARE = [

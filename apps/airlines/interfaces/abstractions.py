@@ -7,20 +7,21 @@ class AbstractAirlineService(ABC):
     @abstractmethod
     def get_airline(self, uid: str) -> AirlineDTO:
         """
+        Get airline data by UID from cache first, if not found, query the database.
         """
         raise NotImplementedError
 
     @abstractmethod
     def upload_image(self, request: UploadImageReq) -> AirlineDTO:
         """
-        this method is for upload image for every airline.
+        Upload image for a specific airline, cache the updated airline.
         """
         raise NotImplementedError
 
     @abstractmethod
     def get_airlines(self, request: AirlineListReq) -> Dict[str, AirlineDTO]:
         """
-        this method will give service to flight service when want to return airline of flight.
+        Get multiple airlines by a list of UIDs, checking cache first.
         """
         raise NotImplementedError
 
@@ -28,7 +29,7 @@ class AbstractAirlineService(ABC):
     @abstractmethod
     def get_airline_by_name(self, name: str) -> AirlineDTO:
         """
-        this method is used to get airline by name and if it doesn't exist it create a new one.
+        Get an airline by its name, checking cache first. If not found, create new airline.
         """
         raise NotImplementedError
 
