@@ -10,6 +10,7 @@ from apps.airlines.services import AirlineService
 from apps.flights.services import FlightsService
 # libs services
 from libs.redis_client.services import CacheService
+from utils.date_time.services import DateTimeUtils
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ class Bootstrapper:
 
     def __init__(self, **kwargs) -> None:
         print(f'kwargs:{kwargs}')
+
+        _date_time_utils = kwargs.get('date_time_utils', DateTimeUtils())
 
         # minio
         _minio_hostname = 'minio_hostname'
