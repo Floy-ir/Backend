@@ -9,9 +9,9 @@ class AbstractFlightCrawler(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_websites(self, request: GetWebsitesRequest) -> Dict[str, Website]:
+    def get_websites(self, request: GetWebsitesRequest) -> Dict[str, WebsiteDTO]:
         raise NotImplementedError
 
     @abstractmethod
-    def upload_photo(self, request: UploadPhotoRequest) -> Website:
+    def upload_image(self, request: UploadImageRequest) -> WebsiteDTO:
         raise NotImplementedError

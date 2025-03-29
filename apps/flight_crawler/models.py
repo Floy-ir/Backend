@@ -16,14 +16,16 @@ class Website(models.Model):
         return self.name
 
 
-class WebsiteCity(models.Model):
-    website = models.ForeignKey(Website, on_delete=models.CASCADE, related_name="cities")
+class WebsiteRoute(models.Model):
+    website = models.ForeignKey(Website, on_delete=models.CASCADE, related_name="routes")
     origin = models.CharField(max_length=5)
     destination = models.CharField(max_length=5)
     is_supported = models.BooleanField(default=True)
+    config = models.JSONField(default=dict, blank=True)
 
     class Meta:
         unique_together = ("website", "origin", "destination")
 
     def __str__(self):
         return f"{self.website.name}: {self.origin} → {self.destination}"
+

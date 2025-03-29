@@ -12,7 +12,7 @@ class CrawlResponse(lib_dataclasses.BaseModel):
     pass
 
 
-class Website(lib_dataclasses.BaseModel):
+class WebsiteDTO(lib_dataclasses.BaseModel):
     uid: lib_dataclasses.UUIDField
     name: str
     name_fa: str
@@ -24,7 +24,6 @@ class GetWebsitesRequest(lib_dataclasses.BaseModel):
 
 
 
-class UploadPhotoRequest(lib_dataclasses.BaseModel):
+class UploadImageRequest(lib_dataclasses.BaseModel):
     uid: lib_dataclasses.UUIDField
     logo: lib_dataclasses.File
-
