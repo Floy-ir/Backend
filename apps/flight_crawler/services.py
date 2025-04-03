@@ -1,14 +1,17 @@
 from typing import Dict
+import time
 import logging
-import requests
 from apps.flight_city import interfaces as flight_city_interfaces
 from utils.date_time import interfaces as date_time_interfaces
 from apps.file_storage import interfaces as file_storage_interfaces
 from apps.accounts import interfaces as account_interfaces
 from libs.redis_client import interfaces as cache_interfaces
+from utils.http_requester import interfaces as http_requester_interfaces
 from apps.flight_crawler.models import Website
 from . import interfaces
 
+
+IS_FINISHED_FIELD = 'is_finished_field'
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                  date_time_utils: date_time_interfaces.AbstractDateTime,
                  flight_city_service: flight_city_interfaces.AbstractFlightCityService,
                  file_storage_service: file_storage_interfaces.AbstractFileStorageService,
+                 http_requester: http_requester_interfaces.AbstractHTTPRequester,
                  cache_service: cache_interfaces.ICacheService,
                  ):
         self.claim = claim
@@ -26,6 +30,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.flight_city_service = flight_city_service
         self.file_storage = file_storage_service
         self.cache_service = cache_service
+        self.http_requester = http_requester
 
     def crawl(self, request: interfaces.CrawlRequest) -> interfaces.CrawlResponse:
         pass
@@ -53,8 +58,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
         website.image = image_link
         website.save()
-
         result = self._convert_website_to_dataclass(website)
+
         self.cache_service.set_json(request.uid, result)
 
         logger.debug(f"Result: {result}")
@@ -87,37 +92,115 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
         return result
 
-
-    @staticmethod
-    def _fetch_flights(source: Website, search_params):
+    def _fetch_flights(self, source: Website, search_params: interfaces.CrawlRequest):
         method = source.request_method
         headers = source.request_headers
         request_structure = source.request_payload_structure
 
-        formatted_params = FlightCrawlerService._format_input_params(request_structure, search_params)
+        formatted_params = self._format_input_params(request_structure, search_params)
 
-        # Perform API request
-        try:
-            if request_structure["type"] == "query":
-                response = requests.get(source.base_url, headers=headers, params=formatted_params)
-            elif request_structure["type"] == "body":
-                response = requests.post(source.base_url, headers=headers, json=formatted_params)
+        has_search_id = request_structure[IS_FINISHED_FIELD]
+
+        all_flights = []
+        is_continued = True
+        response_data = None
+
+        while is_continued:
+            if method == "get":
+                response = self.http_requester.get(url=source.base_url, headers=headers, params=formatted_params)
+            elif method == "post":
+                response = self.http_requester.post(url=source.base_url, headers=headers, json=formatted_params)
             else:
-                return {"error": f"Unsupported request type {request_structure['type']}"}
+                logger.warning(f"Unsupported request type for source {source.name}")
+                raise interfaces.UnsupportedRequestType()
 
-            if response.status_code == 200:
-                return FlightCrawlerService._parse_response(source.response_parsing_rules, response.json())
-            return {"error": f"Failed request. Status: {response.status_code}"}
-        except requests.RequestException as e:
-            return {"error": str(e)}
+            if response.status_code != 200:
+                raise interfaces.UnsuccessfulRequest()
 
-    @staticmethod
-    def _format_input_params(request_structure, search_params):
+            response_data = response.content_json
+
+            is_continued = not (
+                self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
+
+            if not has_search_id:
+                all_flights.extend(self._extract_nested_value(response_data, request_structure["flights_list"]))
+
+            if is_continued:
+                time.sleep(2)
+
+        is_continued = request_structure.get("search_id_request_structure", {}) != {}
+        while is_continued:
+            search_id_request_structure = request_structure["search_id_request_structure"]
+            search_id = self._extract_nested_value(response_data, search_id_request_structure["search_id"])
+            if search_id_request_structure["method"] == 'get':
+                if request_structure["way"] == "params":
+                    response = self.http_requester.get(
+                        url=search_id_request_structure["url"],
+                        headers=headers,
+                        params=formatted_params,
+                    )
+                else:
+                    response = self.http_requester.get(
+                        url=search_id_request_structure["url"] + search_id,
+                        headers=headers,
+                    )
+            else:
+                response = self.http_requester.post(
+                    url=request_structure["search_id_request_structure"]["url"],
+                    headers=headers,
+                    json=formatted_params
+                )
+
+            if response.status_code != 200:
+                raise interfaces.UnsuccessfulRequest()
+
+            response_data = response.content_json
+            all_flights.extend(self._extract_nested_value(response_data, request_structure["flights_list"]))
+            is_continued = not(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
+            if is_continued:
+                all_flights.extend(self._extract_nested_value(response_data, request_structure["flights_list"]))
+                time.sleep(2)
+
+        return all_flights
+
+    def _format_input_params(self, request_structure, search_params: interfaces.CrawlRequest):
+        def set_nested_value(target, keys, value):
+            for key in keys[:-1]:
+                target = target.setdefault(key, {})
+            target[keys[-1]] = value
+
+        formatted_params = {}
+
         mappings = request_structure.get("mappings", {})
-        return {mappings[key]: value for key, value in search_params.items() if key in mappings}
+        static_fields = request_structure.get("static_fields", {})
+        date_fields = request_structure.get("date_fields", {})
 
-    @staticmethod
-    def _parse_response(parsing_rules, response_data):
+        for key, value in search_params.as_dict().items():
+            if key in mappings:
+                path = mappings[key].split(".")
+
+            if key == "departure_timestamp":
+                if date_fields["is_jalali"]:
+                    value = self.date_time.convert_timestamp_to_jalali_date(
+                        timestamp=value,
+                        separator=date_fields["seperator"]
+                    )
+                else:
+                    value = self.date_time.convert_timestamp_to_date(
+                        timestamp=value,
+                        date_format=date_fields["seperator"]
+                    )
+
+            set_nested_value(formatted_params, path, value)
+
+        # Process static fields
+        for key, value in static_fields.items():
+            path = key.split(".")
+            set_nested_value(formatted_params, path, value)
+
+        return formatted_params
+
+    def _parse_response(self, parsing_rules, response_data):
         try:
             if not parsing_rules:
                 return {"error": "No parsing rules defined"}
@@ -125,13 +208,13 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             flights_path = parsing_rules.get("flights_path", "")
             fields_map = parsing_rules.get("fields", {})
 
-            flights_data = FlightCrawlerService._extract_nested_value(response_data, flights_path.split("."))
+            flights_data = self._extract_nested_value(response_data, flights_path)
 
             parsed_flights = []
             if isinstance(flights_data, list):
                 for flight in flights_data:
                     parsed_flights.append({
-                        key: FlightCrawlerService._extract_nested_value(flight, value.split("."))
+                        key: self._extract_nested_value(flight, value.split("."))
                         for key, value in fields_map.items()
                     })
 
@@ -140,12 +223,22 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             return {"error": f"Parsing error: {e}"}
 
     @staticmethod
-    def _extract_nested_value(data, keys):
+    def _extract_nested_value(data, path):
+        """Extracts a nested value from a dictionary using a dot-separated path that may contain list indices."""
+        keys = path.split(".")
+
         for key in keys:
-            if isinstance(data, dict) and key in data:
+            if key.isdigit():  # If key is a number, treat it as a list index
+                index = int(key)
+                if isinstance(data, list) and 0 <= index < len(data):
+                    data = data[index]
+                else:
+                    return None  # Index out of bounds
+            elif isinstance(data, dict) and key in data:
                 data = data[key]
             else:
-                return None
+                return None  # Key does not exist
+
         return data
 
     @staticmethod

@@ -5,7 +5,10 @@ from typing import List
 class CrawlRequest(lib_dataclasses.BaseModel):
     origin: str
     destination: str
-    departure_time: int
+    departure_timestamp: int
+    adult: int
+    child: int
+    infant: int
 
 
 class CrawlResponse(lib_dataclasses.BaseModel):

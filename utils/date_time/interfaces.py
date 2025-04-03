@@ -19,9 +19,30 @@ class AbstractDateTime(ABC):
         """
         raise NotImplementedError
 
-    def convert_timestamp_to_date(self, timestamp: int) -> str:
+    def convert_timestamp_to_date(self, timestamp: int, date_format: str) -> str:
         """
         return date of a timestamp in format yyyy-mm-dd
+        """
+        raise NotImplementedError
+
+    def convert_timestamp_to_jalali_date(self, timestamp: int, separator: str = '-') -> str:
+        """
+        Converts a given Unix timestamp to a formatted Jalali (Persian) date string.
+
+        Args:
+            timestamp (int): The Unix timestamp (seconds since epoch) to be converted.
+            separator (str, optional): The separator to be used between year, month, and day in the formatted date string. Default is '-' (e.g., '1403-01-17').
+
+        Returns:
+            str: The formatted Jalali date string, e.g., '1403-01-17'.
+
+        Example:
+            convert_timestamp_to_jalali_date(1712345600)
+            '1403-01-17'
+
+        Notes:
+            - The method first converts the Unix timestamp into a Gregorian `datetime` object and then converts that to a Jalali date using the `JalaliDate` library.
+            - The returned Jalali date is formatted as 'YYYY-MM-DD', with the option to change the separator between the year, month, and day.
         """
         raise NotImplementedError
 

@@ -24,3 +24,13 @@ class WebsiteNotFound(NotFound):
 class FileStorageNotAvailable(ServiceUnavailable):
     def __init__(self):
         super().__init__("file storage is not available")
+
+
+class UnsupportedRequestType(BadRequest):
+    def __init__(self):
+        super().__init__("unsupported request type")
+
+
+class UnsuccessfulRequest(BadRequest):
+    def __init__(self):
+        super().__init__("unsuccessful request")
