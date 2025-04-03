@@ -18,9 +18,15 @@ class DateTimeUtils(AbstractDateTime):
         next_day_midnight = datetime(now.year, now.month, now.day) + timedelta(days=timedelta_days + 1)
         return int(next_day_midnight.timestamp() - 1)
 
-    def convert_timestamp_to_date(self, timestamp: int) -> str:
+    def convert_timestamp_to_date(self, timestamp: int, date_format: str) -> str:
         date_obj = datetime.fromtimestamp(timestamp)
-        formatted_date = date_obj.strftime('%Y-%m-%d')
+        formatted_date = date_obj.strftime(date_format)
+        return formatted_date
+
+    def convert_timestamp_to_jalali_date(self, timestamp: int, separator: str = '-') -> str:
+        date_obj = datetime.fromtimestamp(timestamp)
+        jalali_date = JalaliDate(date_obj)
+        formatted_date = jalali_date.strftime(f"%Y{separator}%m{separator}%d")
         return formatted_date
 
     def convert_date_time_to_timestamp(self, time: str, date: str) -> int:
