@@ -39,8 +39,12 @@ class Airline(dataclasses.BaseModel):
 
 class WebsiteDTO(dataclasses.BaseModel):
     uid: dataclasses.UUIDField # TODO: return detail
-    price: float
-    redirect_url: dataclasses.URLField
+    adult_price: float
+    child_price: float
+    infant_price: float 
+    base_redirect_url: dataclasses.URLField
+    one_adult_redirect_url: dataclasses.URLField
+    two_adult_redirect_url: dataclasses.URLField
     remaining_seat: int
 
 
@@ -78,6 +82,7 @@ class AirlineFilters(dataclasses.BaseModel):
 class WebsiteFilters(dataclasses.BaseModel):
     uid: dataclasses.UUIDField
     name: str
+    name_fa: str
     image: dataclasses.URLField
     min_price: float
 
