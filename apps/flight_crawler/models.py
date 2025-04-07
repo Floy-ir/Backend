@@ -5,9 +5,6 @@ class Website(models.Model):
     name = models.CharField(max_length=255, unique=True)
     name_fa = models.CharField(max_length=255, unique=True)
     logo = models.CharField(max_length=255)
-    base_url = models.URLField()
-    request_method = models.CharField(max_length=10, choices=[("GET", "GET"), ("POST", "POST")])
-    request_headers = models.JSONField(default=dict, blank=True)
     request_payload_structure = models.JSONField(default=dict, blank=True)
     response_parsing_rules = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
@@ -28,4 +25,3 @@ class WebsiteRoute(models.Model):
 
     def __str__(self):
         return f"{self.website.name}: {self.origin} → {self.destination}"
-

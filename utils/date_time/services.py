@@ -8,6 +8,9 @@ class DateTimeUtils(AbstractDateTime):
     def get_current_timestamp(self) -> int:
         return int(datetime.now().timestamp())
 
+    def get_timestamp_of_interval_ahead(self, day_interval: int) -> int:
+        return int((datetime.now() + timedelta(days=day_interval)).timestamp())
+
     def get_start_timestamp_of_day_from_today(self, timedelta_days: int) -> int:
         now = datetime.now()
         next_day_midnight = datetime(now.year, now.month, now.day) + timedelta(days=timedelta_days)

@@ -11,10 +11,6 @@ class CrawlRequest(lib_dataclasses.BaseModel):
     infant: int
 
 
-class CrawlResponse(lib_dataclasses.BaseModel):
-    pass
-
-
 class WebsiteDTO(lib_dataclasses.BaseModel):
     uid: lib_dataclasses.UUIDField
     name: str
@@ -30,3 +26,26 @@ class GetWebsitesRequest(lib_dataclasses.BaseModel):
 class UploadImageRequest(lib_dataclasses.BaseModel):
     uid: lib_dataclasses.UUIDField
     logo: lib_dataclasses.File
+
+
+class Flight(lib_dataclasses.BaseModel):
+    airline: str
+    flight_number: str
+    origin: str
+    destination: str
+    departure_timestamp: int
+    arrival_timestamp: int
+    seatClass: str #TODO
+    allowed_weight: str
+    adult_price: float
+    child_price: float
+    infant_price: float
+    airplane_name: str
+    provider_uid: lib_dataclasses.UUIDField
+    redirect_url: lib_dataclasses.URLField
+
+
+class CrawlResponse(lib_dataclasses.BaseModel):
+    uid: lib_dataclasses.UUIDField
+    crawl_timestamp: int 
+    results: List[Flight]
