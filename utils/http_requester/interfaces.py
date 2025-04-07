@@ -33,14 +33,13 @@ class RequestException(HttpRequesterBaseException):
 
 class AbstractHTTPRequester(abc.ABC):
 
-    def request(self, method: str, base_addresses: List[str], path: str, data=None, retry_statuses: List[int] = None,
+    def request(self, method: str, url: str, data=None, retry_statuses: List[int] = None,
                 parse_response_as_json: bool = True, timeout: Tuple[int, int] = (10, 301), **kwargs) -> RequesterResponse:
         """requests to base_addresses in turn and returns the first non to-retry response.
 
         Args:
             method (str): one of 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'
-            base_addresses (List[str]): list of base addresses to try in turn
-            path (str): the path will be joined to each of base_addresses
+            url (List[str]): the url of request
             data (any, optional): This is body of the request; any serializable object. Defaults to None.
             retry_statuses (List[int], optional): if request did not succeed or the response status code was one of these, the requester will try next base address. defaults to [500, 502, 503, 504]
             parse_response_as_json (bool, optional): if True, the requester will parse response in case of 200 or 201 response. Defaults to True.
