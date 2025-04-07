@@ -313,8 +313,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
         return formatted_params
 
-    def _parse_response(self, website, flights, parser) -> List[interfaces.Flight]:
+    def _parse_response(self, source: WebsiteRoute, flights, parser) -> List[interfaces.Flight]:
         fields_map = parser.get(FIELDS, {})
+        airline_value_map = parser.get("airline_mapping", None)
         parsed_flights = []
         for raw_flight in flights:
             try:
@@ -324,8 +325,11 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     value = self._extract_nested_value(raw_flight, json_path)
                     parsed_dict[field_name] = value
 
-                parsed_dict["provider_uid"] = str(website.uid)
-                parsed_dict["redirect_url"] = website.base_url #TODO: make this 
+                    if field_name == "airline": 
+                        parsed_dict[field_name] = airline_value_map[value]
+
+                parsed_dict["provider_uid"] = str(source.website.uid)
+                parsed_dict["redirect_url"] = source.website.base_url #TODO: make this 
 
                 try:
                     parsed_flight = interfaces.Flight(**parsed_dict)
@@ -333,7 +337,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 except Exception as e:
                     logger.warning(f"Error parsing flight: {e}, raw data: {parsed_dict}")
             except Exception as e:
-                logger.warning(f"Error parsing response: {e}, website: {website.__dict__}, flights: {flights}")
+                logger.warning(f"Error parsing response: {e}, source: {source.__dict__}, flights: {flights}")
                 continue 
 
         return parsed_flights
