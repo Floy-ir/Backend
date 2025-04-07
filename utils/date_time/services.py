@@ -8,6 +8,9 @@ class DateTimeUtils(AbstractDateTime):
     def get_current_timestamp(self) -> int:
         return int(datetime.now().timestamp())
 
+    def get_timestamp_of_interval_ahead(self, day_interval: int) -> int:
+        return int((datetime.now() + timedelta(days=day_interval)).timestamp())
+
     def get_start_timestamp_of_day_from_today(self, timedelta_days: int) -> int:
         now = datetime.now()
         next_day_midnight = datetime(now.year, now.month, now.day) + timedelta(days=timedelta_days)
@@ -18,9 +21,15 @@ class DateTimeUtils(AbstractDateTime):
         next_day_midnight = datetime(now.year, now.month, now.day) + timedelta(days=timedelta_days + 1)
         return int(next_day_midnight.timestamp() - 1)
 
-    def convert_timestamp_to_date(self, timestamp: int) -> str:
+    def convert_timestamp_to_date(self, timestamp: int, date_format: str) -> str:
         date_obj = datetime.fromtimestamp(timestamp)
-        formatted_date = date_obj.strftime('%Y-%m-%d')
+        formatted_date = date_obj.strftime(date_format)
+        return formatted_date
+
+    def convert_timestamp_to_jalali_date(self, timestamp: int, separator: str = '-') -> str:
+        date_obj = datetime.fromtimestamp(timestamp)
+        jalali_date = JalaliDate(date_obj)
+        formatted_date = jalali_date.strftime(f"%Y{separator}%m{separator}%d")
         return formatted_date
 
     def convert_date_time_to_timestamp(self, time: str, date: str) -> int:
