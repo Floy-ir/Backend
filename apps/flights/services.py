@@ -5,6 +5,7 @@ from utils.date_time import interfaces as date_time_interfaces
 from apps.airlines import interfaces as airlines_interfaces
 from apps.accounts import interfaces as accounts_interfaces
 from libs.redis_client import interfaces as cache_interfaces
+from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from .models import Flight, Website
 from constants import SECOND_IN_A_DAY
 
@@ -16,6 +17,7 @@ class FlightsService(interfaces.AbstractFlightsService):
                  claim: accounts_interfaces.Session,
                  date_time_utils: date_time_interfaces.AbstractDateTime,
                  airlines_service: airlines_interfaces.AbstractAirlineService,
+                 flight_crawler_service: flight_crawler_interfaces.AbstractFlightCrawler,
                  cache_service: cache_interfaces.ICacheService
                  ):
         self.claim = claim
@@ -23,6 +25,7 @@ class FlightsService(interfaces.AbstractFlightsService):
         self.date_time = date_time_utils
         self.airlines_service = airlines_service
         self.cache_service = cache_service
+        self.flight_crawler_service = flight_crawler_service
 
     def get_flights(self, request: interfaces.GetFlightsRequest) -> interfaces.GetFlightsResponse:
         logger.info(f"request: {request}")
@@ -79,6 +82,12 @@ class FlightsService(interfaces.AbstractFlightsService):
             )
         )
 
+        self.website_details = self.flight_crawler_service.get_websites(
+            request=flight_crawler_interfaces.GetWebsitesRequest(
+                uid_list=list(website_uids)
+            )
+        )
+
         airlines_filters = []
         for airline_uid, min_price in airlines_min_price.items():
             airlines_filters.append(
@@ -90,7 +99,19 @@ class FlightsService(interfaces.AbstractFlightsService):
                 )
             )
 
-        # TODO: GET website detail from crawler
+
+        websites_filters = []
+        for website_uid, min_price in websites_min_price.items():
+            websites_filters.append(
+                interfaces.WebsiteFilters(
+                    uid=website_uid,
+                    name=self.website_details[website_uid].name,
+                    name_fa=self.website_details[website_uid].name_fa,
+                    image=self.website_details[website_uid].logo,
+                    min_price=min_price,
+                )
+            )
+            
 
         result = interfaces.GetFlightsResponse(
             count=flights_qs.count(),
