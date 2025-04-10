@@ -28,7 +28,6 @@ class GetFlightsRequest(dataclasses.BaseFilter):
     price__lte: float | None = None
     price__gte: float | None = None
     remaining_seats__gte: int | None = 0
-    is_valid: bool | None = True
 
 
 class Airline(dataclasses.BaseModel):
@@ -112,6 +111,3 @@ class GetCheapestResponse(dataclasses.BaseModel):
     count: int
     results: List[FlightWithoutWebsiteDTO]
 
-
-class CreateFlightRequest(dataclasses.BaseModel):
-    pass
