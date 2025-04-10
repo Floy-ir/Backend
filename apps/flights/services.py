@@ -136,7 +136,7 @@ class FlightsService(interfaces.AbstractFlightsService):
         results: List[interfaces.FlightWithoutWebsiteDTO] = []
         base_timestamp = request.reference_timestamp
 
-        for day_offset in range(request.forward_day):
+        for day_offset in range(request.backward_day, request.forward_day):
             start_ts = base_timestamp + day_offset * SECOND_IN_A_DAY
             end_ts = start_ts + SECOND_IN_A_DAY
             cache_key = f"flights:cheapest:{start_ts}:{end_ts}"

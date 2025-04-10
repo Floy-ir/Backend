@@ -105,6 +105,7 @@ class GetCheapestTicketRequest(dataclasses.BaseModel):
     destination: str
     reference_timestamp: int
     forward_day: int
+    backward_day: int
 
 
 class GetCheapestResponse(dataclasses.BaseModel):
