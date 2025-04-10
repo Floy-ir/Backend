@@ -57,11 +57,29 @@ class Flight(models.Model):
     def __str__(self):
         return f"{self.airline} {self.origin} -> {self.destination} ({self.seat_class})"
 
+    def update_cheapest_info(self):
+        """
+        Updates the cheapest price, redirect URL, and website UID based on valid websites.
+        """
+        valid_websites = self.websites.filter(is_valid=True)
+        if not valid_websites.exists():
+            self.cheapest_price = None
+            self.cheapest_redirect_url = None
+            self.cheapest_website_uid = None
+            self.save()
+            return
+            
+        cheapest_website = min(valid_websites, key=lambda w: w.adult_price)
+        self.cheapest_price = cheapest_website.adult_price
+        self.cheapest_redirect_url = cheapest_website.base_redirect_url
+        self.cheapest_website_uid = cheapest_website.uid
+        self.save()
+
     objects = FlightManager()
 
 
 class Website(models.Model):
-    uid = models.CharField(max_length=128, unique=True)
+    uid = models.CharField(max_length=128)
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name='websites')
     adult_price = models.FloatField()
     child_price = models.FloatField()
@@ -71,8 +89,7 @@ class Website(models.Model):
     two_adult_redirect_url = models.CharField(max_length=128)
     remaining_seat = models.IntegerField()
     is_valid = models.BooleanField(default=True)
-    last_modified_at = models.BigIntegerField()
+    last_crawled_uid = models.CharField(max_length=128)
 
     def __str__(self):
         return f"Website {self.uid} for Flight {self.flight.uid}"
-

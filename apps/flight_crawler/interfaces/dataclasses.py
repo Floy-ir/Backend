@@ -42,10 +42,14 @@ class Flight(lib_dataclasses.BaseModel):
     infant_price: float
     airplane_name: str
     provider_uid: lib_dataclasses.UUIDField
-    redirect_url: lib_dataclasses.URLField
+    one_adult_redirect_url: lib_dataclasses.URLField
+    two_adult_redirect_url: lib_dataclasses.URLField
+    base_redirect_url: lib_dataclasses.URLField
 
 
 class CrawlResponse(lib_dataclasses.BaseModel):
     uid: lib_dataclasses.UUIDField
-    crawl_timestamp: int 
+    crawl_timestamp: int
+    origin: str
+    destination: str
     results: List[Flight]
