@@ -41,6 +41,7 @@ class Flight(lib_dataclasses.BaseModel):
     child_price: float
     infant_price: float
     airplane_name: str
+    remaining_seat: int
     provider_uid: lib_dataclasses.UUIDField
     one_adult_redirect_url: lib_dataclasses.URLField
     two_adult_redirect_url: lib_dataclasses.URLField
