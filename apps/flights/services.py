@@ -175,7 +175,6 @@ class FlightsService(interfaces.AbstractFlightsService):
         
         created_flights = []
         for flight_data in request.results:
-            # Create or update the flight record
             flight, created = Flight.objects.get_or_create(
                 airline=flight_data.airline,
                 origin=flight_data.origin,
@@ -197,9 +196,9 @@ class FlightsService(interfaces.AbstractFlightsService):
                 child_price=flight_data.child_price,
                 infant_price=flight_data.infant_price,
                 base_redirect_url=flight_data.redirect_url,
-                one_adult_redirect_url=flight_data.redirect_url,  # Using the same URL for now
-                two_adult_redirect_url=flight_data.redirect_url,  # Using the same URL for now
-                remaining_seat=10,  # Default value, should be updated with actual data
+                one_adult_redirect_url=flight_data.one_adult_redirect_url,
+                two_adult_redirect_url=flight_data.two_adult_redirect_url,
+                remaining_seat=flight_data.remaining_seat,
                 is_valid=True,
                 last_crawled_uid=request.uid
             )
