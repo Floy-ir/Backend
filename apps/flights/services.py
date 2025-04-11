@@ -187,21 +187,30 @@ class FlightsService(interfaces.AbstractFlightsService):
                     "uid": str(uuid4())
                 }
             )
-            
-            # Create the new website record
-            Website.objects.create(
+
+            website, created = Website.objects.get_or_create(
                 uid=flight_data.provider_uid,
                 flight=flight,
                 adult_price=flight_data.adult_price,
                 child_price=flight_data.child_price,
                 infant_price=flight_data.infant_price,
-                base_redirect_url=flight_data.redirect_url,
-                one_adult_redirect_url=flight_data.one_adult_redirect_url,
-                two_adult_redirect_url=flight_data.two_adult_redirect_url,
                 remaining_seat=flight_data.remaining_seat,
                 is_valid=True,
-                last_crawled_uid=request.uid
+                last_crawled_uid=request.uid,
+                defaults={
+                    "base_redirect_url": flight_data.redirect_url,
+                    "one_adult_redirect_url": flight_data.one_adult_redirect_url,
+                    "two_adult_redirect_url": flight_data.two_adult_redirect_url,
+                }
             )
+            
+            if not created: 
+                if flight_data.one_adult_redirect_url is not None: 
+                    website.one_adult_redirect_url = flight_data.one_adult_redirect_url
+                if flight_data.two_adult_redirect_url is not None:
+                    website.two_adult_redirect_url = flight_data.two_adult_redirect_url
+                
+                website.save()
             
             flight.update_cheapest_info()
             logger.info(f"Created or updated flight with uid: {flight.uid}")
