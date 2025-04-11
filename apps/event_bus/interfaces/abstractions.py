@@ -4,7 +4,7 @@ from .dataclasses import EventOrCommand
 
 
 class AbstractEventListener(abc.ABC):
-    def on_event_or_command(self, emitter_claim: accounts_interfaces.UserClaim, event_or_command: EventOrCommand):
+    def on_event_or_command(self, emitter_claim: accounts_interfaces.Session, event_or_command: EventOrCommand):
         """the listener will receive events with this method
 
         Args:
@@ -16,7 +16,7 @@ class AbstractEventListener(abc.ABC):
 
 class AbstractEventBus(abc.ABC):
 
-    def emit(self, caller: accounts_interfaces.UserClaim, event_or_command: EventOrCommand):
+    def emit(self, caller: accounts_interfaces.Session, event_or_command: EventOrCommand):
         """an internal app uses this method to emit a event or to trigger a delayed command
 
         Args:
@@ -26,7 +26,7 @@ class AbstractEventBus(abc.ABC):
         """
         raise NotImplementedError
 
-    def subscribe(self, caller: accounts_interfaces.UserClaim, match_string: str, listener: AbstractEventListener) -> object:
+    def subscribe(self, caller: accounts_interfaces.Session, match_string: str, listener: AbstractEventListener) -> object:
         """an internal app uses this method to subscribe for an event or for multiple events
 
         Args:

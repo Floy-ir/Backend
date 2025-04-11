@@ -175,7 +175,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         logger.info("result: ", result)
         return result
 
-    def create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
+    def _create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
         logger.info(f"Creating flight with request: {request}")
         
         created_flights = []
