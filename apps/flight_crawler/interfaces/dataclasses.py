@@ -31,8 +31,6 @@ class UploadImageRequest(lib_dataclasses.BaseModel):
 class Flight(lib_dataclasses.BaseModel):
     airline: str
     flight_number: str
-    origin: str
-    destination: str
     departure_timestamp: int
     arrival_timestamp: int
     seatClass: str #TODO
@@ -43,8 +41,8 @@ class Flight(lib_dataclasses.BaseModel):
     airplane_name: str
     remaining_seat: int
     provider_uid: lib_dataclasses.UUIDField
-    one_adult_redirect_url: lib_dataclasses.URLField
-    two_adult_redirect_url: lib_dataclasses.URLField
+    one_adult_redirect_url: lib_dataclasses.URLField | None = None 
+    two_adult_redirect_url: lib_dataclasses.URLField | None = None 
     base_redirect_url: lib_dataclasses.URLField
 
 
