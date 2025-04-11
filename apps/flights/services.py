@@ -5,6 +5,7 @@ from typing import List
 from utils.date_time import interfaces as date_time_interfaces
 from apps.airlines import interfaces as airlines_interfaces
 from apps.accounts import interfaces as accounts_interfaces
+from apps.event_bus import interfaces as event_bus_interfaces
 from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from .models import Flight, Website
@@ -13,20 +14,24 @@ from constants import SECOND_IN_A_DAY
 logger = logging.getLogger(__name__)
 
 
-class FlightsService(interfaces.AbstractFlightsService):
+class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.AbstractEventBus):
     def __init__(self,
                  claim: accounts_interfaces.Session,
                  date_time_utils: date_time_interfaces.AbstractDateTime,
+                 event_bus: event_bus_interfaces.AbstractEventBus,
                  airlines_service: airlines_interfaces.AbstractAirlineService,
                  flight_crawler_service: flight_crawler_interfaces.AbstractFlightCrawler,
                  cache_service: cache_interfaces.ICacheService
                  ):
         self.claim = claim
         self.airline_details = None
+        self.event_bus = event_bus
         self.date_time = date_time_utils
         self.airlines_service = airlines_service
         self.cache_service = cache_service
         self.flight_crawler_service = flight_crawler_service
+
+        self.event_bus.subscribe(self.claim, 'flight_crawler_service/CRAWLED_FLIGHT', self)
 
     def get_flights(self, request: interfaces.GetFlightsRequest) -> interfaces.GetFlightsResponse:
         logger.info(f"request: {request}")
