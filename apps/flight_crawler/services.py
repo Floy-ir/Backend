@@ -5,6 +5,7 @@ import logging
 from apps.flight_city import interfaces as flight_city_interfaces
 from utils.date_time import interfaces as date_time_interfaces
 from apps.file_storage import interfaces as file_storage_interfaces
+from apps.event_bus import interfaces as event_bus_interfaces 
 from apps.airlines import interfaces as airline_interfaces
 from apps.accounts import interfaces as account_interfaces
 from libs.redis_client import interfaces as cache_interfaces
@@ -51,6 +52,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
     def __init__(self,
                  claim: account_interfaces.Session,
                  date_time_utils: date_time_interfaces.AbstractDateTime,
+                 event_bus: event_bus_interfaces.AbstractEventBus,
                  flight_city_service: flight_city_interfaces.AbstractFlightCityService,
                  file_storage_service: file_storage_interfaces.AbstractFileStorageService,
                  http_requester: http_requester_interfaces.AbstractHTTPRequester,
@@ -62,6 +64,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.date_time = date_time_utils
         self.flight_city_service = flight_city_service
         self.airline_service = airline_service
+        self.event_bus = event_bus
         self.file_storage = file_storage_service
         self.cache_service = cache_service
         self.http_requester = http_requester
@@ -78,7 +81,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     for sec_city in first_city.destinations:
                         origin = first_city.value 
                         destination = sec_city.value 
-                        crawl_uid = str(uuid4()) #TODO: use this
+                        crawl_uid = str(uuid4())
                         flights = [] 
                         logger.info(f"Processing route: {origin} -> {destination}")
 
@@ -94,9 +97,21 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                                 )
                                 
                                 flights.extend(self._crawl(request=request))
-
                             
-                                #TODO: emit result of this city 
+                            self.event_bus.emit(
+                                caller=self.claim,
+                                event_or_command=event_bus_interfaces.EventOrCommand(
+                                    uid=str(uuid4()),
+                                    event_type='CRAWLED_FLIGHT',
+                                    payload=interfaces.CrawlResponse(
+                                        uid=crawl_uid,
+                                        crawl_timestamp=target_timestamp,
+                                        origin=origin,
+                                        destination=destination,
+                                        results=flights
+                                    )
+                                )
+                            )
                             
                         except Exception as e:
                             logger.info(f"crawled flights for {origin} -> {destination} error ==>> {e}")
