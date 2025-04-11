@@ -1,0 +1,355 @@
+openapi: 3.0.0
+info:
+  title: Flights API
+  description: API for managing flights, cities, and flight searches
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+paths:
+  /flights:
+    get:
+      summary: Get flights
+      description: Retrieve flights based on various filters
+      parameters:
+        - name: origin
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Origin city code
+        - name: destination
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Destination city code
+        - name: departure_timestamp__gte
+          in: query
+          required: true
+          schema:
+            type: integer
+            description: Minimum departure timestamp
+        - name: departure_timestamp__lte
+          in: query
+          required: true
+          schema:
+            type: integer
+            description: Maximum departure timestamp
+        - name: arrival_timestamp__gte
+          in: query
+          schema:
+            type: integer
+            description: Minimum arrival timestamp
+        - name: arrival_timestamp__lte
+          in: query
+          schema:
+            type: integer
+            description: Maximum arrival timestamp
+        - name: airlines
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+            description: List of airline UUIDs to filter by
+        - name: allowed_weights
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+            description: List of allowed baggage weights
+        - name: seat_classes
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [First Class, Business Class, Premium Economy, Economy Class, Basic Economy]
+            description: List of seat classes to filter by
+        - name: website_uids
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+            description: List of website UUIDs to filter by
+        - name: price__lte
+          in: query
+          schema:
+            type: number
+            format: float
+            description: Maximum price
+        - name: price__gte
+          in: query
+          schema:
+            type: number
+            format: float
+            description: Minimum price
+        - name: remaining_seats__gte
+          in: query
+          schema:
+            type: integer
+            default: 0
+            description: Minimum number of remaining seats
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetFlightsResponse'
+
+  /flights/cheapest:
+    get:
+      summary: Get cheapest ticket
+      description: Find the cheapest ticket for a given route and date range
+      parameters:
+        - name: origin
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Origin city code
+        - name: destination
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Destination city code
+        - name: reference_timestamp
+          in: query
+          required: true
+          schema:
+            type: integer
+            description: Reference timestamp for the search
+        - name: forward_day
+          in: query
+          required: true
+          schema:
+            type: integer
+            description: Number of days to look ahead
+        - name: backward_day
+          in: query
+          required: true
+          schema:
+            type: integer
+            description: Number of days to look back
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCheapestResponse'
+
+  /flight-city:
+    get:
+      summary: Get cities
+      description: Retrieve list of cities and their available destinations
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CityList'
+
+components:
+  schemas:
+    GetFlightsResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Total number of flights found
+        filters:
+          $ref: '#/components/schemas/GetFlightsFilters'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightDTO'
+
+    GetFlightsFilters:
+      type: object
+      properties:
+        min_price:
+          type: number
+          format: float
+        max_price:
+          type: number
+          format: float
+        allowed_weights:
+          type: array
+          items:
+            type: integer
+        seat_classes:
+          type: array
+          items:
+            type: string
+            enum: [First Class, Business Class, Premium Economy, Economy Class, Basic Economy]
+        airlines:
+          type: array
+          items:
+            $ref: '#/components/schemas/AirlineFilters'
+        websites:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebsiteFilters'
+
+    FlightDTO:
+      type: object
+      properties:
+        airline:
+          $ref: '#/components/schemas/Airline'
+        origin:
+          type: string
+        destination:
+          type: string
+        departure_timestamp:
+          type: integer
+        arrival_timestamp:
+          type: integer
+        allowed_weight:
+          type: integer
+        seat_class:
+          type: string
+          enum: [First Class, Business Class, Premium Economy, Economy Class, Basic Economy]
+        websites:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebsiteDTO'
+
+    Airline:
+      type: object
+      properties:
+        uid:
+          type: string
+          format: uuid
+        name:
+          type: string
+        image:
+          type: string
+          format: uri
+
+    AirlineFilters:
+      type: object
+      properties:
+        uid:
+          type: string
+          format: uuid
+        min_price:
+          type: number
+          format: float
+        name:
+          type: string
+        image:
+          type: string
+          format: uri
+
+    WebsiteDTO:
+      type: object
+      properties:
+        uid:
+          type: string
+          format: uuid
+        name:
+          type: string
+        name_fa:
+          type: string
+        logo:
+          type: string
+          format: uri
+        adult_price:
+          type: number
+          format: float
+        child_price:
+          type: number
+          format: float
+        infant_price:
+          type: number
+          format: float
+        base_redirect_url:
+          type: string
+          format: uri
+        one_adult_redirect_url:
+          type: string
+          format: uri
+        two_adult_redirect_url:
+          type: string
+          format: uri
+        remaining_seat:
+          type: integer
+
+    WebsiteFilters:
+      type: object
+      properties:
+        uid:
+          type: string
+          format: uuid
+        name:
+          type: string
+        name_fa:
+          type: string
+        image:
+          type: string
+          format: uri
+        min_price:
+          type: number
+          format: float
+
+    GetCheapestResponse:
+      type: object
+      properties:
+        origin:
+          type: string
+        destination:
+          type: string
+        departure_timestamp:
+          type: integer
+        arrival_timestamp:
+          type: integer
+        price:
+          type: number
+          format: float
+        redirect_url:
+          type: string
+          format: uri
+        website_uid:
+          type: string
+          format: uuid
+
+    CityList:
+      type: object
+      properties:
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SrcCity'
+
+    SrcCity:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        destinations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CityDTO'
+
+    CityDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string 
