@@ -329,7 +329,51 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         parsed_dict[field_name] = airline_value_map[value]
 
                 parsed_dict["provider_uid"] = str(source.website.uid)
-                parsed_dict["redirect_url"] = source.website.base_url #TODO: make this 
+                
+                flight_id = self._extract_nested_value(raw_flight, parser.get("flight_id_path", "id"))
+                city_mapping = source.config.get(CITY_MAPPING, {})
+                origin_code = city_mapping.get(ORIGIN, {}).get(parsed_dict["origin"], parsed_dict["origin"])
+                dest_code = city_mapping.get(DESTINATION, {}).get(parsed_dict["destination"], parsed_dict["destination"])
+
+                departure_date = ""
+                if "departure_timestamp" in parsed_dict:
+                    if source.website.request_payload_structure.get(DATE_FIELDS, {}).get(IS_JALALI, False):
+                        departure_date = self.date_time.convert_timestamp_to_jalali_date(
+                            timestamp=parsed_dict["departure_timestamp"],
+                            separator=source.website.request_payload_structure[DATE_FIELDS][SEPARATOR]
+                        )
+                    else:
+                        departure_date = self.date_time.convert_timestamp_to_date(
+                            timestamp=parsed_dict["departure_timestamp"],
+                            date_format=source.website.request_payload_structure[DATE_FIELDS][SEPARATOR]
+                        )
+
+                # Generate base redirect URL
+                url_params = {
+                    "flight_id": flight_id,
+                    "origin": origin_code,
+                    "destination": dest_code,
+                    "departure_date": departure_date,
+                    "adults": "1",
+                    "children": "0",
+                    "infants": "0"
+                }
+                
+                parsed_dict["base_redirect_url"] = source.website.redirect_url_template.format(**url_params)
+                
+                # Generate one adult redirect URL if template exists
+                if source.website.one_adult_url_template:
+                    parsed_dict["one_adult_redirect_url"] = source.website.one_adult_url_template.format(**url_params)
+                else:
+                    parsed_dict["one_adult_redirect_url"] = parsed_dict["base_redirect_url"]
+                
+                # Generate two adult redirect URL if template exists
+                if source.website.two_adult_url_template:
+                    url_params["adults"] = "2"
+                    parsed_dict["two_adult_redirect_url"] = source.website.two_adult_url_template.format(**url_params)
+                else:
+                    url_params["adults"] = "2"
+                    parsed_dict["two_adult_redirect_url"] = source.website.redirect_url_template.format(**url_params)
 
                 try:
                     parsed_flight = interfaces.Flight(**parsed_dict)
@@ -340,7 +384,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 logger.warning(f"Error parsing response: {e}, source: {source.__dict__}, flights: {flights}")
                 continue 
 
-        return parsed_flights
+        return parsed_flights    
 
     @staticmethod
     def _extract_nested_value(data: dict, path: str):
