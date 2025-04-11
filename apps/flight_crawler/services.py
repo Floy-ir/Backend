@@ -383,7 +383,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     if source.website.two_adult_url_template:
                         parsed_dict["two_adult_redirect_url"] = source.website.two_adult_url_template.format(**url_params)
                     else:
-                        parsed_dict["one_adult_redirect_url"] = None 
+                        parsed_dict["two_adult_redirect_url"] = None 
                 
                 try:
                     parsed_flight = interfaces.Flight(**parsed_dict)
