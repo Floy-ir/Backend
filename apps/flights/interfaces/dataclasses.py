@@ -28,7 +28,6 @@ class GetFlightsRequest(dataclasses.BaseFilter):
     price__lte: float | None = None
     price__gte: float | None = None
     remaining_seats__gte: int | None = 0
-    is_valid: bool | None = True
 
 
 class Airline(dataclasses.BaseModel):
@@ -39,8 +38,12 @@ class Airline(dataclasses.BaseModel):
 
 class WebsiteDTO(dataclasses.BaseModel):
     uid: dataclasses.UUIDField # TODO: return detail
-    price: float
-    redirect_url: dataclasses.URLField
+    adult_price: float
+    child_price: float
+    infant_price: float 
+    base_redirect_url: dataclasses.URLField
+    one_adult_redirect_url: dataclasses.URLField
+    two_adult_redirect_url: dataclasses.URLField
     remaining_seat: int
 
 
@@ -78,6 +81,7 @@ class AirlineFilters(dataclasses.BaseModel):
 class WebsiteFilters(dataclasses.BaseModel):
     uid: dataclasses.UUIDField
     name: str
+    name_fa: str
     image: dataclasses.URLField
     min_price: float
 
@@ -101,12 +105,10 @@ class GetCheapestTicketRequest(dataclasses.BaseModel):
     destination: str
     reference_timestamp: int
     forward_day: int
+    backward_day: int
 
 
 class GetCheapestResponse(dataclasses.BaseModel):
     count: int
     results: List[FlightWithoutWebsiteDTO]
 
-
-class CreateFlightRequest(dataclasses.BaseModel):
-    pass
