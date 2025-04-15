@@ -9,4 +9,5 @@ router.register('', views.FlightsViewSet, basename='flights')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('cheapest/', views.FlightsViewSet.as_view({'get': 'get_cheapest_ticket'}), name='cheapest-tickets'),
 ]
