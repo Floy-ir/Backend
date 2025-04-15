@@ -56,7 +56,9 @@ INSTALLED_APPS = [
     'apps.file_storage',
     'apps.flight_city',
     'apps.airlines',
-    'apps.flights'
+    'apps.flights',
+    'apps.event_bus',
+    'apps.accounts'
 ]
 
 MIDDLEWARE = [
@@ -148,7 +150,7 @@ DATABASES = {
     }
 }
 
-# AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = 'accounts.User'`
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
