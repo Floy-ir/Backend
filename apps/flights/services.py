@@ -1,9 +1,12 @@
 import logging
 from . import interfaces
+from uuid import uuid4
 from typing import List
 from utils.date_time import interfaces as date_time_interfaces
 from apps.airlines import interfaces as airlines_interfaces
 from apps.accounts import interfaces as accounts_interfaces
+from apps.event_bus import interfaces as event_bus_interfaces
+from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from .models import Flight, Website
 from constants import SECOND_IN_A_DAY
@@ -11,18 +14,24 @@ from constants import SECOND_IN_A_DAY
 logger = logging.getLogger(__name__)
 
 
-class FlightsService(interfaces.AbstractFlightsService):
+class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.AbstractEventBus):
     def __init__(self,
                  claim: accounts_interfaces.Session,
                  date_time_utils: date_time_interfaces.AbstractDateTime,
+                 event_bus: event_bus_interfaces.AbstractEventBus,
                  airlines_service: airlines_interfaces.AbstractAirlineService,
+                 flight_crawler_service: flight_crawler_interfaces.AbstractFlightCrawler,
                  cache_service: cache_interfaces.ICacheService
                  ):
         self.claim = claim
         self.airline_details = None
+        self.event_bus = event_bus
         self.date_time = date_time_utils
         self.airlines_service = airlines_service
         self.cache_service = cache_service
+        self.flight_crawler_service = flight_crawler_service
+
+        self.event_bus.subscribe(self.claim, 'flight_crawler_service/CRAWLED_FLIGHT', self)
 
     def get_flights(self, request: interfaces.GetFlightsRequest) -> interfaces.GetFlightsResponse:
         logger.info(f"request: {request}")
@@ -37,6 +46,8 @@ class FlightsService(interfaces.AbstractFlightsService):
                 website_filter[f"websites__{key}"] = value
             else:
                 flight_filter[key] = value
+
+        website_filter["websites__is_valid"] = True
 
         flights_qs = Flight.objects.filter_flights_by_sites(
             website_uids=website_uids,
@@ -79,6 +90,12 @@ class FlightsService(interfaces.AbstractFlightsService):
             )
         )
 
+        self.website_details = self.flight_crawler_service.get_websites(
+            request=flight_crawler_interfaces.GetWebsitesRequest(
+                uid_list=list(website_uids)
+            )
+        )
+
         airlines_filters = []
         for airline_uid, min_price in airlines_min_price.items():
             airlines_filters.append(
@@ -90,7 +107,19 @@ class FlightsService(interfaces.AbstractFlightsService):
                 )
             )
 
-        # TODO: GET website detail from crawler
+
+        websites_filters = []
+        for website_uid, min_price in websites_min_price.items():
+            websites_filters.append(
+                interfaces.WebsiteFilters(
+                    uid=website_uid,
+                    name=self.website_details[website_uid].name,
+                    name_fa=self.website_details[website_uid].name_fa,
+                    image=self.website_details[website_uid].logo,
+                    min_price=min_price,
+                )
+            )
+            
 
         result = interfaces.GetFlightsResponse(
             count=flights_qs.count(),
@@ -112,7 +141,7 @@ class FlightsService(interfaces.AbstractFlightsService):
         results: List[interfaces.FlightWithoutWebsiteDTO] = []
         base_timestamp = request.reference_timestamp
 
-        for day_offset in range(request.forward_day):
+        for day_offset in range(request.backward_day, request.forward_day):
             start_ts = base_timestamp + day_offset * SECOND_IN_A_DAY
             end_ts = start_ts + SECOND_IN_A_DAY
             cache_key = f"flights:cheapest:{start_ts}:{end_ts}"
@@ -146,9 +175,58 @@ class FlightsService(interfaces.AbstractFlightsService):
         logger.info("result: ", result)
         return result
 
-    def create_flight(self, request: interfaces.CreateFlightRequest):
-        pass
+    def _create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
+        logger.info(f"Creating flight with request: {request}")
+        
+        created_flights = []
+        for flight_data in request.results:
+            flight, created = Flight.objects.get_or_create(
+                airline=flight_data.airline,
+                origin=flight_data.origin,
+                destination=flight_data.destination,
+                departure_timestamp=flight_data.departure_timestamp,
+                arrival_timestamp=flight_data.arrival_timestamp,
+                allowed_weight=flight_data.allowed_weight,
+                seat_class=flight_data.seatClass,
+                defaults={
+                    "uid": str(uuid4())
+                }
+            )
 
+            website, created = Website.objects.get_or_create(
+                uid=flight_data.provider_uid,
+                flight=flight,
+                adult_price=flight_data.adult_price,
+                child_price=flight_data.child_price,
+                infant_price=flight_data.infant_price,
+                remaining_seat=flight_data.remaining_seat,
+                is_valid=True,
+                last_crawled_uid=request.uid,
+                defaults={
+                    "base_redirect_url": flight_data.redirect_url,
+                    "one_adult_redirect_url": flight_data.one_adult_redirect_url,
+                    "two_adult_redirect_url": flight_data.two_adult_redirect_url,
+                }
+            )
+            
+            if not created: 
+                if flight_data.one_adult_redirect_url is not None: 
+                    website.one_adult_redirect_url = flight_data.one_adult_redirect_url
+                if flight_data.two_adult_redirect_url is not None:
+                    website.two_adult_redirect_url = flight_data.two_adult_redirect_url
+                
+                website.save()
+            
+            flight.update_cheapest_info()
+            logger.info(f"Created or updated flight with uid: {flight.uid}")
+        
+
+        Website.objects.filter(
+            last_crawled_uid__ne=request.uid,
+            flight__origin=request.origin,
+            flight__destination=request.destination
+        ).update(is_valid=False)
+        logger.info(f"Processed {len(created_flights)} flights")
 
     def _convert_airline_to_dto(self, airline_uid: str) -> interfaces.Airline:
         airline_detail = self.airline_details[airline_uid]
