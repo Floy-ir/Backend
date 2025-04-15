@@ -58,7 +58,8 @@ INSTALLED_APPS = [
     'apps.airlines',
     'apps.flights',
     'apps.event_bus',
-    'apps.accounts'
+    'apps.accounts',
+    'apps.flight_crawler'
 ]
 
 MIDDLEWARE = [
