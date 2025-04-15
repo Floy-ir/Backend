@@ -8,6 +8,11 @@ class Website(models.Model):
     request_payload_structure = models.JSONField(default=dict, blank=True)
     response_parsing_rules = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
+    base_url = models.CharField(max_length=255)
+    redirect_url_template = models.CharField(max_length=255)
+    one_adult_url_template = models.CharField(max_length=255, null=True, blank=True)
+    two_adult_url_template = models.CharField(max_length=255, null=True, blank=True)
+    redirect_url_config = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.name
