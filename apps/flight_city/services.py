@@ -43,10 +43,11 @@ class FlightCityService(interfaces.AbstractFlightCityService):
 
 
     def _convert_city_to_src_city(self, city: City) -> interfaces.SrcCity:
+        destinations = [self._convert_city_to_dto_city(dest) for dest in city.destinations.all()]
         return interfaces.SrcCity(
             name=city.name,
             value=city.value,
-            destinations=self._convert_city_to_dto_city(city.destinations.all()),
+            destinations=destinations,
         )
 
     def _convert_city_to_city_response_dto(self, city: interfaces.CityDTO) -> interfaces.GetCityResponse:

@@ -1,7 +1,6 @@
 from runner.schedule.celery import Celery
 from celery.schedules import crontab
-from django.conf import settings
-from apps.flight_crawler.models import WebsiteRoute
+
 
 app = Celery('floy')
 app.config_from_object('django.conf:settings', namespace='CELERY')
