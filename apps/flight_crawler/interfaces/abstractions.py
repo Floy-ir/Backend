@@ -16,10 +16,6 @@ class AbstractFlightCrawler(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def crawl(self, request: CrawlRequest) -> CrawlResponse:
-        raise NotImplementedError
-
-    @abstractmethod
     def get_websites(self, request: GetWebsitesRequest) -> Dict[str, WebsiteDTO]:
         raise NotImplementedError
 
