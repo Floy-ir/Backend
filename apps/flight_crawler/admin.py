@@ -6,7 +6,6 @@ class WebsiteAdmin(admin.ModelAdmin):
     list_display = ('name', 'name_fa', 'uid', 'is_active', 'base_url')
     list_filter = ('is_active',)
     search_fields = ('name', 'name_fa', 'uid')
-    readonly_fields = ('uid',)
 
 @admin.register(WebsiteRoute)
 class WebsiteRouteAdmin(admin.ModelAdmin):

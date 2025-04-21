@@ -66,6 +66,23 @@ class AbstractDateTime(ABC):
         """
         raise NotImplementedError
 
+    def convert_datetime_string_to_timestamp(self, datetime_str: str, format_str: str) -> int:
+        """
+        Convert a datetime string in a specific format to a Unix timestamp
+        
+        Args:
+            datetime_str: datetime string in the specified format
+            format_str: format string for parsing the datetime (e.g., '%Y-%m-%d %H:%M:%S')
+            
+        Returns:
+            Unix timestamp in seconds
+            
+        Example:
+            convert_datetime_string_to_timestamp('2025-01-15 09:25:00', '%Y-%m-%d %H:%M:%S')
+            # Returns timestamp for 2025-01-15 09:25:00
+        """
+        raise NotImplementedError
+
     def miladi_to_shamsi(self, date_str, separator: str = '-') -> str:
         """
         convert YYYY-MM-DD to SHAMSI
