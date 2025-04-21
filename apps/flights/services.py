@@ -189,8 +189,8 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         for flight_data in request.results:
             flight, created = Flight.objects.get_or_create(
                 airline=flight_data.airline,
-                origin=flight_data.origin,
-                destination=flight_data.destination,
+                origin=request.origin,
+                destination=request.destination,
                 departure_timestamp=flight_data.departure_timestamp,
                 arrival_timestamp=flight_data.arrival_timestamp,
                 allowed_weight=flight_data.allowed_weight,
