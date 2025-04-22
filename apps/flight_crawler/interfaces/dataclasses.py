@@ -36,10 +36,10 @@ class Flight(lib_dataclasses.BaseModel):
     seat_class: str #TODO
     allowed_weight: int
     adult_price: float
-    child_price: float
-    infant_price: float
-    airplane_name: str
-    remaining_seat: int
+    child_price: float | None = None
+    infant_price: float | None = None
+    airplane_name: str | None = None
+    remaining_seat: int | None = None 
     provider_uid: lib_dataclasses.UUIDField
     one_adult_redirect_url: lib_dataclasses.URLField | None = None 
     two_adult_redirect_url: lib_dataclasses.URLField | None = None 
