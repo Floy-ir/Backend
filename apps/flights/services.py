@@ -194,7 +194,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 departure_timestamp=flight_data.departure_timestamp,
                 arrival_timestamp=flight_data.arrival_timestamp,
                 allowed_weight=flight_data.allowed_weight,
-                seat_class=flight_data.seatClass,
+                seat_class=flight_data.seat_class,
                 defaults={
                     "uid": str(uuid4())
                 }
@@ -210,7 +210,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 is_valid=True,
                 last_crawled_uid=request.uid,
                 defaults={
-                    "base_redirect_url": flight_data.redirect_url,
+                    "base_redirect_url": flight_data.base_redirect_url,
                     "one_adult_redirect_url": flight_data.one_adult_redirect_url,
                     "two_adult_redirect_url": flight_data.two_adult_redirect_url,
                 }
