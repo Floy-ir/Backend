@@ -12,7 +12,7 @@ class EventBus(interfaces.AbstractEventBus):
     def __init__(
             self,
             claim: Session,
-            date_time_utils: date_time_interfaces.AbstractDateTimeUtils,
+            date_time_utils: date_time_interfaces.AbstractDateTime,
     ):
         self.claim = claim
         self.date_time_utils = date_time_utils
