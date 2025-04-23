@@ -40,7 +40,7 @@ MAPPINGS = 'mappings'
 STATIC_FIELDS = 'static_fields'
 DATE_FIELDS = 'date_fields'
 IS_JALALI = 'is_jalali'
-SEPARATOR = 'seperator'
+SEPARATOR = 'separator'
 
 # Response parsing constants
 FIELDS = 'fields'
@@ -72,8 +72,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
         try:
-            cities = self.flight_city_service.get_cities()
-
+            cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
+            logger.debug(f"cities ==>>> {cities}")
             for i in range(from_days_ahead, to_days_ahead): 
                 target_timestamp = self.date_time.get_timestamp_of_interval_ahead(day_interval=i)
                 
@@ -206,8 +206,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         return result
 
     def _fetch_flights(self, source: WebsiteRoute, search_params: interfaces.CrawlRequest) -> List[interfaces.Flight]:
-        method = source.website.request_method
-        headers = source.website.request_headers
+        method = source.website.request_payload_structure["method"]
         request_structure = source.website.request_payload_structure
         response_parsing_rules = source.website.response_parsing_rules
 
@@ -218,66 +217,148 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             if DESTINATION in city_mapping:
                 search_params.destination = city_mapping[DESTINATION].get(search_params.destination, search_params.destination)
 
-        formatted_params = self._format_inputs(request_structure, search_params)
+        formatted_params = self._format_inputs(request_structure, search_params.model_dump())
 
-        has_search_id = request_structure[IS_FINISHED_FIELD]
+        has_search_id = request_structure.get(IS_FINISHED_FIELD, None)
 
         all_flights = []
         is_continued = True
         response_data = None
 
-        while is_continued:
-            if method == GET_METHOD:
-                response = self.http_requester.get(
-                    url=request_structure[API_URL], 
-                    headers=request_structure[HEADERS],
-                    params=formatted_params
-                    )
-            elif method == POST_METHOD:
-                response = self.http_requester.post(
-                    url=request_structure[API_URL], 
-                    headers=request_structure[HEADERS], 
-                    json=formatted_params
-                )
-            else:
-                logger.warning(f"Unsupported request type for source {source.name}")
-                raise interfaces.UnsupportedRequestType()
+        # Base headers that will be used for all requests
+        base_headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36'
+        }
 
-            if response.status_code != 200:
+        # Add static headers from request_structure if they exist
+        if HEADERS in request_structure:
+            base_headers.update(request_structure[HEADERS])
+
+        while is_continued:
+            try:
+                if method == GET_METHOD:
+                    logger.info(f"Making GET request to {request_structure[API_URL]}")
+                    logger.info(f"Headers: {base_headers}")
+                    logger.info(f"Params: {formatted_params}")
+
+                    response = self.http_requester.get(
+                        url=request_structure[API_URL], 
+                        headers=base_headers,
+                        params=formatted_params
+                    )
+                elif method == POST_METHOD:
+                    logger.info(f"Making POST request to {request_structure[API_URL]}")
+                    logger.info(f"Headers: {base_headers}")
+                    logger.info(f"Body: {formatted_params}")
+
+                    # Check if we should send as params or json
+                    if request_structure.get("way") == "params":
+                        response = self.http_requester.post(
+                            url=request_structure[API_URL], 
+                            headers=base_headers,
+                            params=formatted_params
+                        )
+                    else:  # Default to json
+                        response = self.http_requester.post(
+                            url=request_structure[API_URL], 
+                            headers=base_headers,
+                            json=formatted_params
+                        )
+                else:
+                    logger.warning(f"Unsupported request type for source {source.name}")
+                    raise interfaces.UnsupportedRequestType()
+
+                if response.status_code != 200:
+                    logger.debug(f"response: {response}")
+                    logger.error(f"HTTP request failed with status code {response.status_code}")
+                    # logger.error(f"Response content: {response.content}")
+                    raise interfaces.UnsuccessfulRequest()
+
+                response_data = response.content_json
+                logger.info(f"Response data: {response_data}")
+
+                # Check if is_finished_field exists in request_structure
+                if IS_FINISHED_FIELD in request_structure:
+                    logger.info(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
+                    logger.info(f'request_structure[IS_FINISHED_FIELD]: {request_structure[IS_FINISHED_FIELD]}')
+                    
+                    is_api_call_finished = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
+                    if is_api_call_finished is None: 
+                        is_continued = False
+                    else: 
+                        is_continued = not(is_api_call_finished)
+                else:
+                    # If no is_finished_field, we only want one response
+                    is_continued = False
+
+                if not has_search_id:
+                    flights = self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH])
+                    if flights:
+                        all_flights.extend(flights)
+                    else:
+                        logger.warning(f"No flights found in response for {source.website.name}")
+
+                if is_continued:
+                    time.sleep(3)
+
+            except Exception as e:
+                logger.error(f"Error fetching flights from {source.website.name}: {str(e)}")
                 raise interfaces.UnsuccessfulRequest()
 
-            response_data = response.content_json
+        # Check if search_id_request_structure exists before proceeding
+        if SEARCH_ID_REQUEST_STRUCTURE not in request_structure or not request_structure[SEARCH_ID_REQUEST_STRUCTURE]:
+            result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
+            logger.info(f"result: {result}")
+            return result
 
-            is_continued = not (
-                self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
+        search_id_request_structure = request_structure[SEARCH_ID_REQUEST_STRUCTURE]
+        search_id = self._extract_nested_value(response_data, search_id_request_structure[SEARCH_ID])
+        logger.info(f'search id: {search_id}')
 
-            if not has_search_id:
-                all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
-
-            if is_continued:
-                time.sleep(3)
-
-        is_continued = request_structure.get(SEARCH_ID_REQUEST_STRUCTURE, {}) != {}
+        is_continued = True
         while is_continued:
-            search_id_request_structure = request_structure[SEARCH_ID_REQUEST_STRUCTURE]
-            search_id = self._extract_nested_value(response_data, search_id_request_structure[SEARCH_ID])
             if search_id_request_structure[METHOD] == GET_METHOD:
-                if request_structure[WAY] == PARAMS:
+                if search_id_request_structure[WAY] == PARAMS:
+                    logger.info(f"Making GET request to {search_id_request_structure[API_URL]}")
+                    logger.info(f"Headers: {search_id_request_structure[HEADERS]}")
+                    logger.info(f"Body: {formatted_params}")
+                    search_id_request_params = {
+                        "search_id": search_id
+                    }
+                    search_id_request_params = self._format_inputs(search_id_request_structure, search_id_request_params)
+
                     response = self.http_requester.get(
-                        url=search_id_request_structure[URL],
-                        headers=request_structure[HEADERS],
-                        params=formatted_params,
+                        url=search_id_request_structure[API_URL],
+                        headers=base_headers,
+                        params=search_id_request_params,
                     )
+
                 else:
+                    logger.info(f"Making GET request to {request_structure[API_URL]}/{search_id}")
+                    logger.info(f"Headers: {request_structure[HEADERS]}")
+                    
                     response = self.http_requester.get(
-                        url=search_id_request_structure[URL] + search_id,
-                        headers=request_structure[HEADERS],
+                        url=search_id_request_structure[API_URL] + '/' + search_id,
+                        headers=base_headers,
                     )
             else:
+                logger.info(f"Making POST request to {request_structure[API_URL]}")
+                logger.info(f"Headers: {request_structure[HEADERS]}")
+                logger.info(f"search id: {search_id}")
+
+                search_id_body = {
+                    "search_id": search_id
+                }
+                search_id_body = self._format_inputs(search_id_request_structure)
+
                 response = self.http_requester.post(
-                    url=request_structure[SEARCH_ID_REQUEST_STRUCTURE][URL],
-                    headers=headers,
-                    json=formatted_params
+                    url=search_id_request_structure[API_URL],
+                    headers={
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36'
+                    },
+                    json=search_id_body
                 )
 
             if response.status_code != 200:
@@ -285,20 +366,47 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
             response_data = response.content_json
             all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
-            is_continued = not(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
+            
+            # Check if is_finished_field exists before using it
+            if IS_FINISHED_FIELD in request_structure:
+                is_continued = not(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
+            else:
+                is_continued = False
+                
             if is_continued:
                 all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
-                time.sleep(2)
+                time.sleep(3)
 
-        result = self._parse_response(website=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
+        result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
         logger.info(f"result: {result}")
         return result
 
     def _format_inputs(self, request_structure, search_params: interfaces.CrawlRequest):
         def set_nested_value(target, keys, value):
-            for key in keys[:-1]:
-                target = target.setdefault(key, {})
-            target[keys[-1]] = value
+            current = target
+            for i, key in enumerate(keys[:-1]):
+                if key.isdigit():  # Handle array indices
+                    index = int(key)
+                    if not isinstance(current, list):
+                        current = []
+                    while len(current) <= index:
+                        current.append({})
+                    current = current[index]
+                else:
+                    if key not in current:
+                        current[key] = {}
+                    current = current[key]
+            
+            last_key = keys[-1]
+            if last_key.isdigit():
+                index = int(last_key)
+                if not isinstance(current, list):
+                    current = []
+                while len(current) <= index:
+                    current.append(None)
+                current[index] = value
+            else:
+                current[last_key] = value
 
         formatted_params = {}
 
@@ -306,101 +414,121 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         static_fields = request_structure.get(STATIC_FIELDS, {})
         date_fields = request_structure.get(DATE_FIELDS, {})
 
-        for key, value in search_params.as_dict().items():
-            if key in mappings:
-                path = mappings[key].split(".")
+        # Start with static fields
+        formatted_params.update(static_fields)
 
+        # Process mappings
+        for key, path in mappings.items():
+            if key not in search_params:
+                continue
+
+            value = search_params[key]
+            
+            # Handle departure_timestamp specially
             if key == "departure_timestamp":
-                if date_fields[IS_JALALI]:
+                if date_fields.get(IS_JALALI, False):
                     value = self.date_time.convert_timestamp_to_jalali_date(
                         timestamp=value,
-                        separator=date_fields[SEPARATOR]
+                        separator=date_fields.get(SEPARATOR, "-")
                     )
                 else:
                     value = self.date_time.convert_timestamp_to_date(
                         timestamp=value,
-                        date_format=date_fields[SEPARATOR]
+                        date_format=date_fields.get('date_format', "%Y-%m-%d")
                     )
 
-            set_nested_value(formatted_params, path, value)
-
-        # Process static fields
-        for key, value in static_fields.items():
-            path = key.split(".")
-            set_nested_value(formatted_params, path, value)
+            # Split the path by dots to handle nested structure
+            keys = path.split('.')
+            set_nested_value(formatted_params, keys, value)
 
         return formatted_params
 
     def _parse_response(self, source: WebsiteRoute, flights, parser, request) -> List[interfaces.Flight]:
+        logger.debug(f"source: {source.__dict__}, parser: {parser}")
         fields_map = parser.get(FIELDS, {})
-        airline_value_map = parser.get("airline_mapping", None)
+        airline_value_map = parser.get("airline_mapping", {})
+        seat_class_map = parser.get("seat_class_mapping", {})
+        date_fields = parser.get(DATE_FIELDS, {})
         parsed_flights = []
         for raw_flight in flights:
+            remianing_seat = self._extract_nested_value(raw_flight, fields_map["remaining_seat"])
+            if remianing_seat is None or remianing_seat <= 0: 
+                continue
+
             try:
                 parsed_dict = {}
 
                 for field_name, json_path in fields_map.items():
                     value = self._extract_nested_value(raw_flight, json_path)
+                    
+                    if field_name == "allowed_weight": 
+                        value = int(str(value).split(" ")[0]) if value else 20 
+
+                    # Apply seat class mapping if this is the seat_class field
+                    if field_name == "seat_class" and value in seat_class_map:
+                        value = seat_class_map[value]
+
+                    # Convert datetime strings to timestamps
+                    if field_name in ["departure_timestamp", "arrival_timestamp"] and isinstance(value, str):
+                        date_format = date_fields.get('date_format', '%Y-%m-%dT%H:%M:%S')
+                        value = self.date_time.convert_datetime_string_to_timestamp(value, date_format)
+                        
                     parsed_dict[field_name] = value
 
-                parsed_dict["airline"] = self.airline_service.get_airline_by_name(airline_value_map[parsed_dict["airline"]]).uid
+                # Apply airline mapping
+                if "airline" in parsed_dict and parsed_dict["airline"] in airline_value_map:
+                    airline_name = airline_value_map[parsed_dict["airline"]]
+                    parsed_dict["airline"] = self.airline_service.get_airline_by_name(airline_name).uid
+                else:
+                    # Fallback to direct lookup if no mapping
+                    parsed_dict["airline"] = self.airline_service.get_airline_by_name(parsed_dict["airline"]).uid
 
                 parsed_dict["provider_uid"] = str(source.website.uid)
 
-                if not source.website.redirect_url_config: 
-                    redirect_url_departure_date = parsed_dict["departure_timestamp"]
+                # if not source.website.redirect_url_config: 
+                #     redirect_url_departure_date = parsed_dict["departure_timestamp"]
 
-                if source.website.request_payload_structure.get(DATE_FIELDS, {}).get(IS_JALALI, False):
-                    parsed_dict["departure_timestamp"] = self.date_time.convert_timestamp_to_jalali_date(
-                        timestamp=parsed_dict["departure_timestamp"],
-                        separator=source.website.request_payload_structure[DATE_FIELDS][SEPARATOR]
-                    )
-                else:
-                    parsed_dict["departure_timestamp"] = self.date_time.convert_timestamp_to_date(
-                        timestamp=parsed_dict["departure_timestamp"],
-                        date_format=source.website.request_payload_structure[DATE_FIELDS][SEPARATOR]
-                    )
-
-                if source.website.redirect_url_config:
-                    date_fields = source.website.redirect_url_config[DATE_FIELDS]
-                    if date_fields[IS_JALALI]:
-                        redirect_url_departure_date = self.date_time.convert_timestamp_to_jalali_date(
-                            timestamp=parsed_dict["departure_timestamp"],
-                            separator=date_fields[SEPARATOR]
-                        )
-                    else:
-                        redirect_url_departure_date = self.date_time.convert_timestamp_to_date(
-                            timestamp=parsed_dict["departure_timestamp"],
-                            date_format=date_fields[SEPARATOR]
-                        )
+                # if source.website.redirect_url_config:
+                #     redirect_date_fields = source.website.redirect_url_config.get(DATE_FIELDS, {})
+                #     if redirect_date_fields.get(IS_JALALI, False):
+                #         redirect_url_departure_date = self.date_time.convert_timestamp_to_jalali_date(
+                #             timestamp=parsed_dict["departure_timestamp"],
+                #             separator=redirect_date_fields.get(SEPARATOR, "-")
+                #         )
+                #     else:
+                #         redirect_url_departure_date = self.date_time.convert_timestamp_to_date(
+                #             timestamp=parsed_dict["departure_timestamp"],
+                #             date_format=redirect_date_fields.get('date_format', "%Y-%m-%d")
+                #         )
 
            
-                flight_id = self._extract_nested_value(raw_flight, parser.get("flight_id_path", "id"))
-                city_mapping = source.website.redirect_url_config.get(CITY_MAPPING, {})
-                origin_code = city_mapping.get(request.origin, request.origin)
-                dest_code = city_mapping.get(request.destination, request.destination)
+                # flight_id = self._extract_nested_value(raw_flight, parser.get("flight_id_path", "id"))
+                # city_mapping = source.website.redirect_url_config.get(CITY_MAPPING, {})
+                # origin_code = city_mapping.get(request.origin, request.origin)
+                # dest_code = city_mapping.get(request.destination, request.destination)
 
-                url_params = {
-                    "flight_id": flight_id,
-                    "origin": origin_code,
-                    "destination": dest_code,
-                    "departure_date": redirect_url_departure_date,
-                }
+                # url_params = {
+                #     "flight_id": flight_id,
+                #     "origin": origin_code,
+                #     "destination": dest_code,
+                #     "departure_date": redirect_url_departure_date,
+                # }
                 
-                parsed_dict["base_redirect_url"] = source.website.redirect_url_template.format(**url_params)
-                if request.adult == 1: 
-                    if source.website.one_adult_url_template:
-                        parsed_dict["one_adult_redirect_url"] = source.website.one_adult_url_template.format(**url_params)
-                    else:
-                        parsed_dict["one_adult_redirect_url"] = None 
+                # parsed_dict["base_redirect_url"] = source.website.redirect_url_template.format(**url_params)
+                # if request.adult == 1: 
+                #     if source.website.one_adult_url_template:
+                #         parsed_dict["one_adult_redirect_url"] = source.website.one_adult_url_template.format(**url_params)
+                #     else:
+                #         parsed_dict["one_adult_redirect_url"] = None 
 
-                elif request.adult == 2: 
-                    if source.website.two_adult_url_template:
-                        parsed_dict["two_adult_redirect_url"] = source.website.two_adult_url_template.format(**url_params)
-                    else:
-                        parsed_dict["two_adult_redirect_url"] = None 
+                # elif request.adult == 2: 
+                #     if source.website.two_adult_url_template:
+                #         parsed_dict["two_adult_redirect_url"] = source.website.two_adult_url_template.format(**url_params)
+                #     else:
+                #         parsed_dict["two_adult_redirect_url"] = None 
                 
                 try:
+                    logger.debug(f"parsed_dict: {parsed_dict}")
                     parsed_flight = interfaces.Flight(**parsed_dict)
                     parsed_flights.append(parsed_flight)
                 except Exception as e:

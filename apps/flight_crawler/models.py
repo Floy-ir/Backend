@@ -4,7 +4,7 @@ class Website(models.Model):
     uid = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=255, unique=True)
     name_fa = models.CharField(max_length=255, unique=True)
-    logo = models.CharField(max_length=255)
+    logo = models.CharField(max_length=255, blank=True, null=True)
     request_payload_structure = models.JSONField(default=dict, blank=True)
     response_parsing_rules = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)

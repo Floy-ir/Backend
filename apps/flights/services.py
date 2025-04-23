@@ -10,6 +10,7 @@ from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from .models import Flight, Website
 from constants import SECOND_IN_A_DAY
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,12 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         self.flight_crawler_service = flight_crawler_service
 
         self.event_bus.subscribe(self.claim, 'flight_crawler_service/CRAWLED_FLIGHT', self)
+
+    def on_event_or_command(self, emitter_claim: accounts_interfaces.Session,
+                            event_or_command: event_bus_interfaces.EventOrCommand):
+        if emitter_claim.user_uid == 'flight_crawler_service' and event_or_command.event_type == 'CRAWLED_FLIGHT':
+            payload: flight_crawler_interfaces.CrawlResponse = event_or_command.payload
+            self._create_flight(request=payload)
 
     def get_flights(self, request: interfaces.GetFlightsRequest) -> interfaces.GetFlightsResponse:
         logger.info(f"request: {request}")
@@ -182,12 +189,12 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         for flight_data in request.results:
             flight, created = Flight.objects.get_or_create(
                 airline=flight_data.airline,
-                origin=flight_data.origin,
-                destination=flight_data.destination,
+                origin=request.origin,
+                destination=request.destination,
                 departure_timestamp=flight_data.departure_timestamp,
                 arrival_timestamp=flight_data.arrival_timestamp,
                 allowed_weight=flight_data.allowed_weight,
-                seat_class=flight_data.seatClass,
+                seat_class=flight_data.seat_class,
                 defaults={
                     "uid": str(uuid4())
                 }
@@ -203,7 +210,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 is_valid=True,
                 last_crawled_uid=request.uid,
                 defaults={
-                    "base_redirect_url": flight_data.redirect_url,
+                    "base_redirect_url": flight_data.base_redirect_url,
                     "one_adult_redirect_url": flight_data.one_adult_redirect_url,
                     "two_adult_redirect_url": flight_data.two_adult_redirect_url,
                 }
@@ -222,7 +229,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         
 
         Website.objects.filter(
-            last_crawled_uid__ne=request.uid,
+            ~Q(last_crawled_uid=request.uid),
             flight__origin=request.origin,
             flight__destination=request.destination
         ).update(is_valid=False)

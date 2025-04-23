@@ -53,6 +53,18 @@ class DateTimeUtils(AbstractDateTime):
         dt = datetime.strptime(temp, "%Y-%m-%dT%H:%M:%S%z")
         return int(dt.timestamp())
 
+    def convert_datetime_string_to_timestamp(self, datetime_str: str, format_str: str) -> int:
+        # Parse the datetime string according to the specified format
+        dt = datetime.strptime(datetime_str, format_str)
+        
+        # Add timezone information (GMT+3:30) if not present
+        if dt.tzinfo is None:
+            gmt_plus_3_30 = pytz.FixedOffset(210)  # 210 minutes = 3 hours 30 minutes
+            dt = gmt_plus_3_30.localize(dt)
+            
+        # Convert to timestamp (seconds since epoch)
+        return int(dt.timestamp())
+
     def miladi_to_shamsi(self, date_str, separator: str = '-') -> str:
         date_obj = datetime.strptime(date_str, "%Y-%m-%d")
         jalali_date = JalaliDate(date_obj)
