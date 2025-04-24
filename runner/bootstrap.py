@@ -12,6 +12,7 @@ from apps.flight_city.services import FlightCityService
 from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
 from apps.flights.services import FlightsService
+from apps.event_bus.services import EventBus
 # libs services
 from libs.redis_client.services import CacheService
 from utils.date_time.services import DateTimeUtils
@@ -147,6 +148,9 @@ class Bootstrapper:
 
     def get_flight_crawler_service(self) -> FlightCrawlerService:
         return self._flight_crawler
+    
+    def get_event_bus(self) -> EventBus: 
+        return self._event_bus
 
 
 def get_bootstrapper(**kwargs) -> Bootstrapper:

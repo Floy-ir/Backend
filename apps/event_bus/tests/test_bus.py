@@ -12,39 +12,42 @@ class BusTestCase(TestCase):
         self.service = bootstrapper.get_event_bus()
         self.listener1 = ListListener()
         self.service.subscribe(
-            caller=accounts_interfaces.UserClaim(uid=str(uuid.uuid4()),
+            caller=accounts_interfaces.Session(uid=str(uuid.uuid4()),
                                                  user_uid="listener1",
-                                                 user=accounts_interfaces.UserPublicInfo(
+                                                 session_uid=str(uuid.uuid4()),
+                                                 user=accounts_interfaces.User(
                                                      uid='listener1',
                                                      is_identified=True,
                                                      full_name="abed abdi",
-                                                     user_type=accounts_interfaces.UserType.IRANIAN_ORDINARY)
+                                                     user_type=accounts_interfaces.UserType.ORDINARY)
                                                  ),
             match_string='*/*',
             listener=self.listener1,
         )
         self.listener2 = BadListener()
         self.service.subscribe(
-            caller=accounts_interfaces.UserClaim(uid=str(uuid.uuid4()),
+            caller=accounts_interfaces.Session(uid=str(uuid.uuid4()),
                                                  user_uid="listener2",
-                                                 user=accounts_interfaces.UserPublicInfo(
+                                                 session_uid=str(uuid.uuid4()),
+                                                 user=accounts_interfaces.User(
                                                      uid='listener2',
                                                      is_identified=True,
                                                      full_name="abed abdi",
-                                                     user_type=accounts_interfaces.UserType.IRANIAN_ORDINARY)
+                                                     user_type=accounts_interfaces.UserType.ORDINARY)
                                                  ),
             match_string='*/*',
             listener=self.listener2,
         )
         self.listener3 = ListListener()
         self.service.subscribe(
-            caller=accounts_interfaces.UserClaim(uid=str(uuid.uuid4()),
+            caller=accounts_interfaces.Session(uid=str(uuid.uuid4()),
                                                  user_uid="listener3",
-                                                 user=accounts_interfaces.UserPublicInfo(
+                                                 session_uid=str(uuid.uuid4()),
+                                                 user=accounts_interfaces.User(
                                                      uid='listener3',
                                                      is_identified=True,
                                                      full_name="abed abdi",
-                                                     user_type=accounts_interfaces.UserType.IRANIAN_ORDINARY)
+                                                     user_type=accounts_interfaces.UserType.ORDINARY)
                                                  ),
             match_string='*/*',
             listener=self.listener3,
@@ -52,13 +55,14 @@ class BusTestCase(TestCase):
 
     def test_last_listener_receives_event_even_if_previous_listener_was_bad(self):
         self.service.emit(
-            caller=accounts_interfaces.UserClaim(uid=str(uuid.uuid4()),
+            caller=accounts_interfaces.Session(uid=str(uuid.uuid4()),
                                                  user_uid="emitter1",
-                                                 user=accounts_interfaces.UserPublicInfo(
+                                                 session_uid=str(uuid.uuid4()),
+                                                 user=accounts_interfaces.User(
                                                      uid='emitter1',
                                                      is_identified=True,
                                                      full_name="abed abdi",
-                                                     user_type=accounts_interfaces.UserType.IRANIAN_ORDINARY)
+                                                     user_type=accounts_interfaces.UserType.ORDINARY)
                                                  ),
             event_or_command=interfaces.EventOrCommand(uid='u0', event_type='event1', payload=Payload(data='u0 data')),
         )
@@ -66,36 +70,40 @@ class BusTestCase(TestCase):
         self.assertEqual(len(self.listener3.event_list), 1)
 
     def test_idempotency(self):
+        session_uid = str(uuid.uuid4())
         self.service.emit(
-            caller=accounts_interfaces.UserClaim(uid=str(uuid.uuid4()),
+            caller=accounts_interfaces.Session(uid=str(uuid.uuid4()),
                                                  user_uid="emitter1",
-                                                 user=accounts_interfaces.UserPublicInfo(
+                                                 session_uid=session_uid,
+                                                 user=accounts_interfaces.User(
                                                      uid='emitter1',
                                                      is_identified=True,
                                                      full_name="abed abdi",
-                                                     user_type=accounts_interfaces.UserType.IRANIAN_ORDINARY)
+                                                     user_type=accounts_interfaces.UserType.ORDINARY)
                                                  ),
             event_or_command=interfaces.EventOrCommand(uid='u0', event_type='event1', payload=Payload(data='u0 data')),
         )
         self.service.emit(
-            caller=accounts_interfaces.UserClaim(uid=str(uuid.uuid4()),
+            caller=accounts_interfaces.Session(uid=str(uuid.uuid4()),
                                                  user_uid="emitter1",
-                                                 user=accounts_interfaces.UserPublicInfo(
+                                                 session_uid=session_uid,
+                                                 user=accounts_interfaces.User(
                                                      uid='emitter1',
                                                      is_identified=True,
                                                      full_name="abed abdi",
-                                                     user_type=accounts_interfaces.UserType.IRANIAN_ORDINARY)
+                                                     user_type=accounts_interfaces.UserType.ORDINARY)
                                                  ),
             event_or_command=interfaces.EventOrCommand(uid='u1', event_type='event1', payload=Payload(data='u1 data')),
         )
         self.service.emit(
-            caller=accounts_interfaces.UserClaim(uid=str(uuid.uuid4()),
+            caller=accounts_interfaces.Session(uid=str(uuid.uuid4()),
                                                  user_uid="emitter1",
-                                                 user=accounts_interfaces.UserPublicInfo(
+                                                 session_uid=session_uid,
+                                                 user=accounts_interfaces.User(
                                                      uid='emitter1',
                                                      is_identified=True,
                                                      full_name="abed abdi",
-                                                     user_type=accounts_interfaces.UserType.IRANIAN_ORDINARY)
+                                                     user_type=accounts_interfaces.UserType.ORDINARY)
                                                  ),
             event_or_command=interfaces.EventOrCommand(uid='u1', event_type='event1', payload=Payload(data='u1 data')),
         )
@@ -103,13 +111,14 @@ class BusTestCase(TestCase):
         self.assertEqual(len(self.listener3.event_list), 2)
 
     def test_event_or_command_equality(self):
-        emitter = accounts_interfaces.UserClaim(uid=str(uuid.uuid4()),
+        emitter = accounts_interfaces.Session(uid=str(uuid.uuid4()),
                                                 user_uid="emitter1",
-                                                user=accounts_interfaces.UserPublicInfo(
+                                                session_uid=str(uuid.uuid4()),
+                                                user=accounts_interfaces.User(
                                                     uid='emitter1',
                                                     is_identified=True,
                                                     full_name="abed abdi",
-                                                    user_type=accounts_interfaces.UserType.IRANIAN_ORDINARY)
+                                                    user_type=accounts_interfaces.UserType.ORDINARY)
                                                 )
         event_or_command = interfaces.EventOrCommand(uid='u0', event_type='event1', payload=Payload(data='u0 data'))
         self.service.emit(

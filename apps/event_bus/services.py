@@ -1,9 +1,11 @@
 import logging
+from django.db import IntegrityError
 
 from utils.date_time import interfaces as date_time_interfaces
 
 from apps.accounts.interfaces import Session
 from . import interfaces
+from .models import EventOrCommand
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,19 @@ class EventBus(interfaces.AbstractEventBus):
         if event_or_command.emission_type == interfaces.EmissionType.EVENT:
             raise NotImplementedError
         logger.info(f'\n\ncaller: {caller}, event_or_command: {event_or_command}')
+        
+        try:
+            EventOrCommand.objects.create(
+                uid=event_or_command.uid,
+                emitter_uid=caller.user_uid,
+                event_type=event_or_command.event_type,
+                payload_json=event_or_command.payload.model_dump(),
+                created_at=self.date_time_utils.get_current_timestamp()
+            )
+        except IntegrityError:
+            logger.info(f'Duplicate event detected with uid: {event_or_command.uid}')
+            return
+            
         try:
             for subscriber in self.subscribers:
                 logger.debug(f"subscriber: {subscriber}")
