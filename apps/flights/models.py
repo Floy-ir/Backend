@@ -31,10 +31,10 @@ class Flight(models.Model):
     BASIC_ECONOMY = 'Basic Economy'
 
     SEAT_CLASSES = [
-        (FIRST_CLASS, 'First Class'),
-        (BUSINESS_CLASS, 'Business Class'),
+        (FIRST_CLASS, 'First'),
+        (BUSINESS_CLASS, 'Business'),
         (PREMIUM_ECONOMY, 'Premium Economy'),
-        (ECONOMY_CLASS, 'Economy Class'),
+        (ECONOMY_CLASS, 'Economy'),
         (BASIC_ECONOMY, 'Basic Economy'),
     ]
 
@@ -81,12 +81,12 @@ class Flight(models.Model):
 class Website(models.Model):
     uid = models.CharField(max_length=128)
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name='websites')
-    adult_price = models.FloatField()
-    child_price = models.FloatField()
-    infant_price = models.FloatField()
+    adult_price = models.FloatField(null=True, blank=True)
+    child_price = models.FloatField(null=True, blank=True)
+    infant_price = models.FloatField(null=True, blank=True)
     base_redirect_url = models.CharField(max_length=128)
-    one_adult_redirect_url = models.CharField(max_length=128)
-    two_adult_redirect_url = models.CharField(max_length=128)
+    one_adult_redirect_url = models.CharField(max_length=128, null=True, blank=True)
+    two_adult_redirect_url = models.CharField(max_length=128, null=True, blank=True)
     remaining_seat = models.IntegerField()
     is_valid = models.BooleanField(default=True)
     last_crawled_uid = models.CharField(max_length=128)

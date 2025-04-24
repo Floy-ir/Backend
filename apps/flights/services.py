@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.AbstractEventBus):
     def __init__(self,
                  claim: accounts_interfaces.Session,
-                 date_time_utils: date_time_interfaces.AbstractDateTime,
                  event_bus: event_bus_interfaces.AbstractEventBus,
                  airlines_service: airlines_interfaces.AbstractAirlineService,
                  flight_crawler_service: flight_crawler_interfaces.AbstractFlightCrawler,
@@ -27,7 +26,6 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         self.claim = claim
         self.airline_details = None
         self.event_bus = event_bus
-        self.date_time = date_time_utils
         self.airlines_service = airlines_service
         self.cache_service = cache_service
         self.flight_crawler_service = flight_crawler_service
@@ -42,17 +40,33 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
     def get_flights(self, request: interfaces.GetFlightsRequest) -> interfaces.GetFlightsResponse:
         logger.info(f"request: {request}")
-        websites_field = ["price__lte", "price__gte", "remaining_seats__gte"]
+
+        filter_field_map = {
+            "airlines": "airline__in",
+            "origin": "origin",
+            "destination": "destination",
+            "seat_classes": "seat_class__in",
+            "allowed_weights": "allowed_weight__in",
+            "departure_timestamp__gte": "departure_timestamp__gte",
+            "departure_timestamp__lte": "departure_timestamp__lte",
+            "arrival_timestamp__gte": "arrival_timestamp__gte",
+            "arrival_timestamp__lte": "arrival_timestamp__lte",
+            "websites": "websites__uid__in",
+            "price__lte": "websites__price__lte",
+            "price__gte": "websites__price__gte",
+            "remaining_seats__gte": "websites__remaining_seat__gte",
+        }
 
         flight_filter = {}
         website_filter = {}
-        website_uids = request.website_uids or []
+        website_uids = request.websites or []
 
-        for key, value in request.as_dict():
-            if key in websites_field:
-                website_filter[f"websites__{key}"] = value
-            else:
-                flight_filter[key] = value
+        for key, value in request.model_dump().items():
+            if value is None: 
+                continue
+            
+            website_filter_key = filter_field_map.get(key)
+            website_filter[website_filter_key] = value
 
         website_filter["websites__is_valid"] = True
 
@@ -60,7 +74,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             website_uids=website_uids,
             flight_filters=flight_filter,
             website_filters=website_filter,
-        )
+        ).order_by(request.order_by)
 
         websites_uid = set()
         airlines_uid = set()
@@ -73,16 +87,17 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
         for flight in flights_qs:
             allowed_weights.add(flight.allowed_weight)
-            seat_classes.add(flight.seat_classes)
+            seat_classes.add(flight.seat_class)
 
             for website in flight.websites.all():
                 websites_uid.add(website.uid)
+                
                 if websites_min_price.get(website.uid) is None:
                     websites_min_price[website.uid] = float('inf')
 
-                min_price = min(min_price, website.price)
-                max_price = max(max_price, website.price)
-                websites_min_price[website.uid] = min(websites_min_price[website.uid], flight.price)
+                min_price = min(min_price, website.adult_price)
+                max_price = max(max_price, website.adult_price)
+                websites_min_price[website.uid] = min(websites_min_price[website.uid], website.adult_price)
 
             airlines_uid.add(flight.airline)
             if flight.cheapest_price is not None:
@@ -99,7 +114,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
         self.website_details = self.flight_crawler_service.get_websites(
             request=flight_crawler_interfaces.GetWebsitesRequest(
-                uid_list=list(website_uids)
+                uid_list=list(websites_uid)
             )
         )
 
@@ -110,7 +125,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                     uid=airline_uid,
                     min_price=min_price,
                     name=self.airline_details[airline_uid].name,
-                    image=self.airline_details[airline_uid].image,
+                    logo=self.airline_details[airline_uid].image,
                 )
             )
 
@@ -122,7 +137,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                     uid=website_uid,
                     name=self.website_details[website_uid].name,
                     name_fa=self.website_details[website_uid].name_fa,
-                    image=self.website_details[website_uid].logo,
+                    logo=self.website_details[website_uid].logo,
                     min_price=min_price,
                 )
             )
@@ -136,11 +151,11 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 allowed_weights=list(allowed_weights),
                 seat_classes=list(seat_classes),
                 airlines=airlines_filters,
-                #TODO: add websites filters
+                websites=websites_filters,
             ),
             results=[self._convert_flight_to_dto(flight) for flight in flights_qs]
         )
-        logger.info("result: ", result)
+        logger.info(f"result: {result}")
         return result
 
     def get_cheapest_ticket(self, request: interfaces.GetCheapestTicketRequest) -> interfaces.GetCheapestResponse:
@@ -235,17 +250,14 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         ).update(is_valid=False)
         logger.info(f"Processed {len(created_flights)} flights")
 
-    def _convert_airline_to_dto(self, airline_uid: str) -> interfaces.Airline:
-        airline_detail = self.airline_details[airline_uid]
-        return interfaces.Airline(
-            uid=airline_detail.uid,
-            name=airline_detail.name,
-            image=airline_detail.image
-        )
 
     def _convert_flight_to_dto(self, flight: Flight) -> interfaces.FlightDTO:
         return interfaces.FlightDTO(
-            airline=self._convert_airline_to_dto(flight.airline),
+            airline=interfaces.AirlineDetail(
+                uid=flight.airline,
+                name=self.airline_details[flight.airline].name,
+                logo=self.airline_details[flight.airline].image
+            ),
             origin=flight.origin,
             destination=flight.destination,
             departure_timestamp=flight.departure_timestamp,
@@ -267,7 +279,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             seat_class=flight.seat_class,
             price=flight.cheapest_price,
             redirect_url=flight.cheapest_redirect_url,
-            website_uid=flight.cheapest_website_uid,
+            website=flight.cheapest_website,
         )
 
     @staticmethod
@@ -282,14 +294,22 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             seat_class=flight["seat_class"],
             price=flight["cheapest_price"],
             redirect_url=flight["cheapest_redirect_url"],
-            website_uid=flight["cheapest_website_uid"],
+            website=flight["cheapest_website"],
         )
 
-    @staticmethod
-    def _convert_website_to_dto(website: Website) -> interfaces.WebsiteDTO:
+    def _convert_website_to_dto(self, website: Website) -> interfaces.WebsiteDTO:
         return interfaces.WebsiteDTO(
-            uid=website.uid,
-            price=website.price,
-            redirect_url=website.redirect_url,
+            uid=interfaces.WebsiteDetail(
+                uid=website.uid,
+                name=self.website_details[website.uid].name,
+                name_fa=self.website_details[website.uid].name_fa,
+                logo=self.website_details[website.uid].logo,
+            ),
+            adult_price=website.adult_price,
+            child_price=website.child_price,
+            infant_price=website.infant_price,
+            base_redirect_url=website.base_redirect_url,
+            one_adult_redirect_url=website.one_adult_redirect_url,
+            two_adult_redirect_url=website.two_adult_redirect_url,
             remaining_seat=website.remaining_seat,
         )
