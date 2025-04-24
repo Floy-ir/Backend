@@ -237,6 +237,15 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 if flight_data.two_adult_redirect_url is not None:
                     website.two_adult_redirect_url = flight_data.two_adult_redirect_url
                 
+                if flight_data.adult_price is not None:
+                    website.adult_price = flight_data.adult_price
+                if flight_data.child_price is not None:
+                    website.child_price = flight_data.child_price
+                if flight_data.infant_price is not None:
+                    website.infant_price = flight_data.infant_price
+                    
+                website.remaining_seat = flight_data.remaining_seat if flight_data.remaining_seat is not None else 0
+
                 website.save()
             
             flight.update_cheapest_info()
