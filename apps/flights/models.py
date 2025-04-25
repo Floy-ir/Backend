@@ -9,12 +9,12 @@ class FlightManager(models.Manager):
         if flight_filters:
             queryset = queryset.filter(**flight_filters)
 
-        if website_uids:
+        if website_filters:
             website_q = Q(**website_filters)
+            queryset = queryset.filter(website_q)
 
-            queryset = queryset.filter(
-                websites__uid__in=website_uids
-            ).filter(website_q)
+        if website_uids:
+            queryset = queryset.filter(websites__uid__in=website_uids)
 
         if prefetch_websites:
             queryset = queryset.prefetch_related('websites')
