@@ -12,6 +12,7 @@ from apps.flight_city.services import FlightCityService
 from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
 from apps.flights.services import FlightsService
+from apps.event_bus.services import EventBus
 # libs services
 from libs.redis_client.services import CacheService
 from utils.date_time.services import DateTimeUtils
@@ -41,9 +42,9 @@ class Bootstrapper:
         _minio_bucket_name = os.getenv('MINIO_BUCKET_NAME', 'floy-bucket')
 
         # redis
-        _REDIS_HOST = "localhost"
-        _REDIS_PORT = 6379
-        _REDIS_DB = 0
+        _REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+        _REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
+        _REDIS_DB = int(os.getenv('REDIS_DB', '0'))
 
         # variables
         _max_adults = 2
@@ -101,8 +102,8 @@ class Bootstrapper:
             )
         )
 
-        self._flight_crawler = kwargs.get(
-            'flight_crawler',
+        self._flight_crawler_service = kwargs.get(
+            'flight_crawler_service',
             FlightCrawlerService(
                 claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
                 date_time_utils=_date_time_utils,
@@ -122,9 +123,8 @@ class Bootstrapper:
             FlightsService(
                 claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
                 airlines_service=self._airlines_service,
-                date_time_utils=_date_time_utils,
                 event_bus=self._event_bus,
-                flight_crawler_service=self._flight_crawler,
+                flight_crawler_service=self._flight_crawler_service,
                 cache_service=self._cache_service
             )
         )
@@ -146,7 +146,10 @@ class Bootstrapper:
         return self._flights_service
 
     def get_flight_crawler_service(self) -> FlightCrawlerService:
-        return self._flight_crawler
+        return self._flight_crawler_service
+    
+    def get_event_bus(self) -> EventBus: 
+        return self._event_bus
 
 
 def get_bootstrapper(**kwargs) -> Bootstrapper:
