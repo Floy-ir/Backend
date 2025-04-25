@@ -51,7 +51,9 @@ class Flight(models.Model):
         default=ECONOMY_CLASS,
     )
     cheapest_price = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
-    cheapest_redirect_url = models.CharField(max_length=256, null=True, blank=True)
+    cheapest_base_redirect_url = models.CharField(max_length=256, null=True, blank=True)
+    cheapest_one_adult_redirect_url = models.CharField(max_length=256, null=True, blank=True)
+    cheapest_two_adult_redirect_url = models.CharField(max_length=256, null=True, blank=True)
     cheapest_website_uid = models.CharField(max_length=128, null=True, blank=True)
 
     def __str__(self):
@@ -64,14 +66,18 @@ class Flight(models.Model):
         valid_websites = self.websites.filter(is_valid=True)
         if not valid_websites.exists():
             self.cheapest_price = None
-            self.cheapest_redirect_url = None
+            self.cheapest_base_redirect_url = None
+            self.cheapest_one_adult_redirect_url = None
+            self.cheapest_two_adult_redirect_url = None
             self.cheapest_website_uid = None
             self.save()
             return
             
         cheapest_website = min(valid_websites, key=lambda w: w.adult_price)
         self.cheapest_price = cheapest_website.adult_price
-        self.cheapest_redirect_url = cheapest_website.base_redirect_url
+        self.cheapest_base_redirect_url = cheapest_website.base_redirect_url
+        self.cheapest_one_adult_redirect_url = cheapest_website.one_adult_redirect_url
+        self.cheapest_two_adult_redirect_url = cheapest_website.two_adult_redirect_url
         self.cheapest_website_uid = cheapest_website.uid
         self.save()
 

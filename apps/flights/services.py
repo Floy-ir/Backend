@@ -74,16 +74,16 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             website_uids=website_uids,
             flight_filters=flight_filter,
             website_filters=website_filter,
-        ).order_by(request.order_by)
+        ).order_by('cheapest_price')
 
         websites_uid = set()
         airlines_uid = set()
         allowed_weights = set()
         seat_classes = set()
-        max_price = float('inf')
+        max_price = float('-inf')
+        min_price = float('inf')
         airlines_min_price = {}
         websites_min_price = {}
-        min_price = 0
 
         for flight in flights_qs:
             allowed_weights.add(flight.allowed_weight)
@@ -218,16 +218,15 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             website, created = Website.objects.get_or_create(
                 uid=flight_data.provider_uid,
                 flight=flight,
-                adult_price=flight_data.adult_price,
-                child_price=flight_data.child_price,
-                infant_price=flight_data.infant_price,
-                remaining_seat=flight_data.remaining_seat,
-                is_valid=True,
-                last_crawled_uid=request.uid,
                 defaults={
                     "base_redirect_url": flight_data.base_redirect_url,
                     "one_adult_redirect_url": flight_data.one_adult_redirect_url,
                     "two_adult_redirect_url": flight_data.two_adult_redirect_url,
+                    "adult_price": flight_data.adult_price,
+                    "child_price": flight_data.child_price,
+                    "infant_price": flight_data.infant_price,
+                    "remaining_seat": flight_data.remaining_seat,
+                    "last_crawled_uid": request.uid,
                 }
             )
             
@@ -245,6 +244,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                     website.infant_price = flight_data.infant_price
                     
                 website.remaining_seat = flight_data.remaining_seat if flight_data.remaining_seat is not None else 0
+                website.is_valid = True
 
                 website.save()
             
@@ -273,6 +273,16 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             arrival_timestamp=flight.arrival_timestamp,
             allowed_weight=flight.allowed_weight,
             seat_class=flight.seat_class,
+            cheapest_price=flight.cheapest_price,
+            cheapest_base_redirect_url=flight.cheapest_base_redirect_url,
+            cheapest_one_adult_redirect_url=flight.cheapest_one_adult_redirect_url,
+            cheapest_two_adult_redirect_url=flight.cheapest_two_adult_redirect_url,
+            cheapest_website=interfaces.WebsiteDetail(
+                uid=flight.cheapest_website_uid,
+                name=self.website_details[flight.cheapest_website_uid].name,
+                name_fa=self.website_details[flight.cheapest_website_uid].name_fa,
+                logo=self.website_details[flight.cheapest_website_uid].logo
+            ),
             websites=[self._convert_website_to_dto(website) for website in flight.websites.all()],
         )
 
@@ -287,7 +297,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             allowed_weight=flight.allowed_weight,
             seat_class=flight.seat_class,
             price=flight.cheapest_price,
-            redirect_url=flight.cheapest_redirect_url,
+            redirect_url=flight.cheapest_base_redirect_url,
             website=flight.cheapest_website,
         )
 
@@ -302,13 +312,13 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             allowed_weight=flight["allowed_weight"],
             seat_class=flight["seat_class"],
             price=flight["cheapest_price"],
-            redirect_url=flight["cheapest_redirect_url"],
+            redirect_url=flight["cheapest_base_redirect_url"],
             website=flight["cheapest_website"],
         )
 
     def _convert_website_to_dto(self, website: Website) -> interfaces.WebsiteDTO:
         return interfaces.WebsiteDTO(
-            uid=interfaces.WebsiteDetail(
+            detail=interfaces.WebsiteDetail(
                 uid=website.uid,
                 name=self.website_details[website.uid].name,
                 name_fa=self.website_details[website.uid].name_fa,
