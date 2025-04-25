@@ -44,7 +44,7 @@ class WebsiteDetail(dataclasses.BaseModel):
 
 
 class WebsiteDTO(dataclasses.BaseModel):
-    uid: WebsiteDetail
+    detail: WebsiteDetail
     adult_price: float
     child_price: float | None = None
     infant_price: float | None = None
@@ -62,6 +62,11 @@ class FlightDTO(dataclasses.BaseModel):
     arrival_timestamp: int
     allowed_weight: int
     seat_class: SeatClass
+    cheapest_price: float
+    cheapest_base_redirect_url: dataclasses.URLField
+    cheapest_one_adult_redirect_url: dataclasses.URLField | None = None
+    cheapest_two_adult_redirect_url: dataclasses.URLField | None = None
+    cheapest_website: WebsiteDetail
     websites: List[WebsiteDTO]
 
 
