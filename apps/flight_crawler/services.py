@@ -163,18 +163,18 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 caller=self.claim,
                 request=file_storage_interfaces.UploadRequest(
                     uid=request.uid,
-                    files=[request.image]
+                    files=[request.logo]
                 )
             )
         except file_storage_interfaces.InternalFileStorageNotAvailable as e:
             logger.debug(f"Error: {e}")
             raise interfaces.FileStorageNotAvailable()
 
-        website.image = image_link
+        website.logo = image_link.results[0]
         website.save()
         result = self._convert_website_to_dataclass(website)
 
-        self.cache_service.set_json(request.uid, result)
+        self.cache_service.set_json(request.uid, result.model_dump())
 
         logger.debug(f"Result: {result}")
         return result
@@ -196,12 +196,12 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         if not missing_uids:
             return result
 
-        logger.debug(f"Cache miss for airlines with uids: {','.join(missing_uids)}")
+        logger.debug(f"Cache miss for websites with uids: {','.join(missing_uids)}")
         websites = Website.objects.filter(uid__in=missing_uids)
 
         for website in websites:
             result[website.uid] = self._convert_website_to_dataclass(website)
-            self.cache_service.set_json(website.uid, result[website.uid])
+            self.cache_service.set_json(website.uid, result[website.uid].model_dump())
 
         return result
 
