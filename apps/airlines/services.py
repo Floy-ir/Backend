@@ -9,6 +9,7 @@ from apps.file_storage import interfaces as file_storage_interfaces
 
 logger = logging.getLogger(__name__)
 
+
 class AirlineService(interfaces.AbstractAirlineService):
     def __init__(
             self,
@@ -30,19 +31,21 @@ class AirlineService(interfaces.AbstractAirlineService):
             return result
 
         try:
-            carrier = Airline.objects.get(uid=uid)
+            airline = Airline.objects.get(uid=uid)
         except Airline.DoesNotExist:
-            logger.debug(f"Carrier with uid {uid} doesn't exist")
+            logger.debug(f"airline with uid {uid} doesn't exist")
             raise interfaces.AirlineNotFound()
 
-        result = self._convert_airline_to_dataclass(carrier)
-        self.cache_service.set_json(uid, result)
+        result = self._convert_airline_to_dataclass(airline)
+        self.cache_service.set_json(uid, result.model_dump())
         logger.info(f"result: {result}")
         return result
 
     def get_airlines(self, request: interfaces.AirlineListReq) -> Dict[str, interfaces.AirlineDTO]:
         logger.info(f"request: {request}")
         cached_airlines = self.cache_service.mget_json(request.uid_list)
+
+        print(f'\n\ncached_airlines: {cached_airlines}\n\n')
 
         result = {}
         missing_uids = []
@@ -62,8 +65,7 @@ class AirlineService(interfaces.AbstractAirlineService):
 
         for airline in airlines:
             result[airline.uid] = self._convert_airline_to_dataclass(airline)
-            # Cache the result for future use
-            self.cache_service.set_json(airline.uid, result[airline.uid])
+            self.cache_service.set_json(airline.uid, result[airline.uid].model_dump())
 
         return result
 
@@ -88,11 +90,11 @@ class AirlineService(interfaces.AbstractAirlineService):
             logger.debug(f"Error: {e}")
             raise interfaces.FileStorageNotAvailable()
 
-        airline.image = image_link
+        airline.image = image_link.results[0]
         airline.save()
 
         result = self._convert_airline_to_dataclass(airline)
-        self.cache_service.set_json(request.uid, result)
+        self.cache_service.set_json(request.uid, result.model_dump())
 
         logger.debug(f"Result: {result}")
         return result
@@ -119,13 +121,13 @@ class AirlineService(interfaces.AbstractAirlineService):
         return interfaces.AirlineDTO(
             uid=airline.uid,
             name=airline.name,
-            images=airline.image
+            image=airline.image
         )
 
     @staticmethod
     def _convert_dict_to_airline(airline: dict) -> interfaces.AirlineDTO:
         return interfaces.AirlineDTO(
             name=airline['name'],
-            images=airline['images'],
+            image=airline['image'],
             uid=airline['uid']
         )
