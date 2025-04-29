@@ -15,7 +15,7 @@ class AirlineDTO(dataclasses.BaseModel):
 
 class AirlineListReq(dataclasses.BaseModel):
     uid_list: List[str]
-
+    
 
 class Airlines(dataclasses.BaseModel):
     count: int
