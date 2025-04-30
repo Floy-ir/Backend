@@ -1,5 +1,14 @@
 from libs import dataclasses as lib_dataclasses
 from typing import List
+from enum import Enum
+
+
+class SeatClass(str, Enum):
+    FIRST_CLASS = 'First'
+    BUSINESS_CLASS = 'Business'
+    PREMIUM_ECONOMY = 'Premium Economy'
+    ECONOMY_CLASS = 'Economy'
+    BASIC_ECONOMY = 'Basic Economy'
 
 
 class CrawlRequest(lib_dataclasses.BaseModel):
@@ -33,7 +42,7 @@ class Flight(lib_dataclasses.BaseModel):
     flight_number: str
     departure_timestamp: int
     arrival_timestamp: int
-    seat_class: str #TODO
+    seat_class: SeatClass
     allowed_weight: int
     adult_price: float
     child_price: float | None = None
