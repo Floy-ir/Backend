@@ -11,7 +11,7 @@ class Command(BaseCommand):
         try:
             bootstrapper = Bootstrapper()
             service = bootstrapper.get_flight_crawler_service()
-            service.crawl_scheduled_flights(2,3)
+            service.crawl_scheduled_flights(5,6)
 
             self.stdout.write(
                 self.style.SUCCESS(

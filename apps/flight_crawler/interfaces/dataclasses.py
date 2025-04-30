@@ -15,7 +15,7 @@ class WebsiteDTO(lib_dataclasses.BaseModel):
     uid: lib_dataclasses.UUIDField
     name: str
     name_fa: str
-    logo: lib_dataclasses.URLField
+    logo: lib_dataclasses.URLField | None = None
 
 
 class GetWebsitesRequest(lib_dataclasses.BaseModel):
