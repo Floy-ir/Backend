@@ -193,7 +193,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
             if cheapest_flight:
                 cheapest_dto = self._convert_flight_db_without_website_to_dto(cheapest_flight)
-                self.cache_service.set(cache_key, cheapest_dto)
+                self.cache_service.set(cache_key, cheapest_dto.model_dump())
                 results.append(self._convert_flight_dict_without_website_to_dto(cheapest_flight))
 
         result = interfaces.GetCheapestResponse(
