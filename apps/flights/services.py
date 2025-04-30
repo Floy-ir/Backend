@@ -206,7 +206,6 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
     def _create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
         logger.info(f"Creating flight with request: {request}")
         
-        created_flights = []
         for flight_data in request.results:
             flight, created = Flight.objects.get_or_create(
                 airline=flight_data.airline,
@@ -284,11 +283,6 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             flight__origin=request.origin,
             flight__destination=request.destination
         ).update(is_valid=False)
-        
-        for website in Website.objects.filter(is_valid=False):
-            logger.debug(f"\n\nwebsite: {website.__dict__}\n\n")
-
-        logger.info(f"Processed {len(created_flights)} flights")
 
 
     def _convert_flight_to_dto(self, flight: Flight) -> interfaces.FlightDTO:
