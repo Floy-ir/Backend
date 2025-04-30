@@ -485,6 +485,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
                 parsed_dict["provider_uid"] = str(source.website.uid)
 
+                #TODO: remove this 
+                parsed_dict["base_redirect_url"] = source.website.base_url
+
                 # if not source.website.redirect_url_config: 
                 #     redirect_url_departure_date = parsed_dict["departure_timestamp"]
 
