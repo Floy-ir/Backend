@@ -12,6 +12,8 @@ from libs.redis_client import interfaces as cache_interfaces
 from utils.http_requester import interfaces as http_requester_interfaces
 from apps.flight_crawler.models import Website, WebsiteRoute
 from . import interfaces
+import asyncio
+import aiohttp
 
 
 # Request structure constants
@@ -74,54 +76,73 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         try:
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
             logger.debug(f"cities ==>>> {cities}")
-            for i in range(from_days_ahead, to_days_ahead): 
+            
+            for i in range(from_days_ahead, to_days_ahead):
                 target_timestamp = self.date_time.get_timestamp_of_interval_ahead(day_interval=i)
                 
-                for first_city in cities.results:
-                    for sec_city in first_city.destinations:
-                        origin = first_city.value 
-                        destination = sec_city.value 
-                        crawl_uid = str(uuid4())
-                        flights = [] 
-                        logger.info(f"Processing route: {origin} -> {destination}")
-
-                        try:
-                            for adult_cnt in range(1, self.max_adults): 
-                                request = interfaces.CrawlRequest(
-                                    origin=origin,
-                                    destination=destination,
-                                    departure_timestamp=target_timestamp,
-                                    adult=adult_cnt,
-                                    child=0,
-                                    infant=0
-                                )
-                                
-                                flights.extend(self._crawl(request=request))
-                            
-                            self.event_bus.emit(
-                                caller=self.claim,
-                                event_or_command=event_bus_interfaces.EventOrCommand(
-                                    uid=str(uuid4()),
-                                    event_type='CRAWLED_FLIGHT',
-                                    payload=interfaces.CrawlResponse(
-                                        uid=crawl_uid,
-                                        crawl_timestamp=target_timestamp,
-                                        origin=origin,
-                                        destination=destination,
-                                        results=flights
-                                    )
-                                )
-                            )
-                            
-                        except Exception as e:
-                            logger.info(f"crawled flights for {origin} -> {destination} error ==>> {e}")
-                            continue                  
+                # Create event loop and run async tasks
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self._crawl_all_routes(cities, target_timestamp))
+                finally:
+                    loop.close()
                     
         except Exception as e:
             logger.error(f"Error in crawl_scheduled_flights: {str(e)}")
             raise
 
-    def _crawl(self, request: interfaces.CrawlRequest) -> List[interfaces.Flight]:
+    async def _crawl_all_routes(self, cities, target_timestamp: int):
+        tasks = []
+        for first_city in cities.results:
+            for sec_city in first_city.destinations:
+                origin = first_city.value
+                destination = sec_city.value
+                task = self._crawl_route(origin, destination, target_timestamp)
+                tasks.append(task)
+        
+        # Run all tasks concurrently
+        return await asyncio.gather(*tasks)
+
+    async def _crawl_route(self, origin: str, destination: str, target_timestamp: int) -> List[interfaces.Flight]:
+        crawl_uid = str(uuid4())
+        flights = []
+        logger.info(f"Processing route: {origin} -> {destination}")
+
+        try:
+            for adult_cnt in range(1, self.max_adults):
+                request = interfaces.CrawlRequest(
+                    origin=origin,
+                    destination=destination,
+                    departure_timestamp=target_timestamp,
+                    adult=adult_cnt,
+                    child=0,
+                    infant=0
+                )
+                
+                flights.extend(await self._crawl(request=request))
+            
+            self.event_bus.emit(
+                caller=self.claim,
+                event_or_command=event_bus_interfaces.EventOrCommand(
+                    uid=str(uuid4()),
+                    event_type='CRAWLED_FLIGHT',
+                    payload=interfaces.CrawlResponse(
+                        uid=crawl_uid,
+                        crawl_timestamp=target_timestamp,
+                        origin=origin,
+                        destination=destination,
+                        results=flights
+                    )
+                )
+            )
+            
+        except Exception as e:
+            logger.info(f"crawled flights for {origin} -> {destination} error ==>> {e}")
+        
+        return flights
+
+    async def _crawl(self, request: interfaces.CrawlRequest) -> List[interfaces.Flight]:
         """
         Initiates the crawling process for flights based on the provided request parameters.
         
@@ -142,7 +163,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             )
 
             for website in websites_route: 
-                flights.extend(self._fetch_flights(source=website, search_params=request))
+                flights.extend(await self._fetch_flights(source=website, search_params=request))
                 
             return flights
         except Exception as e: 
@@ -205,7 +226,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
         return result
 
-    def _fetch_flights(self, source: WebsiteRoute, search_params: interfaces.CrawlRequest) -> List[interfaces.Flight]:
+    async def _fetch_flights(self, source: WebsiteRoute, search_params: interfaces.CrawlRequest) -> List[interfaces.Flight]:
         method = source.website.request_payload_structure["method"]
         request_structure = source.website.request_payload_structure
         response_parsing_rules = source.website.response_parsing_rules
@@ -235,151 +256,137 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         if HEADERS in request_structure:
             base_headers.update(request_structure[HEADERS])
 
-        while is_continued:
-            try:
-                if method == GET_METHOD:
-                    logger.info(f"Making GET request to {request_structure[API_URL]}")
-                    logger.info(f"Headers: {base_headers}")
-                    logger.info(f"Params: {formatted_params}")
+        async with aiohttp.ClientSession() as session:
+            while is_continued:
+                try:
+                    if method == GET_METHOD:
+                        logger.info(f"Making GET request to {request_structure[API_URL]}")
+                        logger.info(f"Headers: {base_headers}")
+                        logger.info(f"Params: {formatted_params}")
 
-                    response = self.http_requester.get(
-                        url=request_structure[API_URL], 
-                        headers=base_headers,
-                        params=formatted_params
-                    )
-                elif method == POST_METHOD:
-                    logger.info(f"Making POST request to {request_structure[API_URL]}")
-                    logger.info(f"Headers: {base_headers}")
-                    logger.info(f"Body: {formatted_params}")
-
-                    # Check if we should send as params or json
-                    if request_structure.get("way") == "params":
-                        response = self.http_requester.post(
-                            url=request_structure[API_URL], 
+                        async with session.get(
+                            request_structure[API_URL],
                             headers=base_headers,
                             params=formatted_params
-                        )
-                    else:  # Default to json
-                        response = self.http_requester.post(
-                            url=request_structure[API_URL], 
-                            headers=base_headers,
-                            json=formatted_params
-                        )
-                else:
-                    logger.warning(f"Unsupported request type for source {source.name}")
-                    raise interfaces.UnsupportedRequestType()
+                        ) as response:
+                            if response.status != 200:
+                                raise interfaces.UnsuccessfulRequest()
+                            response_data = await response.json()
 
-                if response.status_code != 200:
-                    logger.debug(f"response: {response}")
-                    logger.error(f"HTTP request failed with status code {response.status_code}")
-                    # logger.error(f"Response content: {response.content}")
+                    elif method == POST_METHOD:
+                        logger.info(f"Making POST request to {request_structure[API_URL]}")
+                        logger.info(f"Headers: {base_headers}")
+                        logger.info(f"Body: {formatted_params}")
+
+                        if request_structure.get("way") == "params":
+                            async with session.post(
+                                request_structure[API_URL],
+                                headers=base_headers,
+                                params=formatted_params
+                            ) as response:
+                                if response.status != 200:
+                                    raise interfaces.UnsuccessfulRequest()
+                                response_data = await response.json()
+                        else:
+                            async with session.post(
+                                request_structure[API_URL],
+                                headers=base_headers,
+                                json=formatted_params
+                            ) as response:
+                                if response.status != 200:
+                                    raise interfaces.UnsuccessfulRequest()
+                                response_data = await response.json()
+
+                    logger.info(f"Response data: {response_data}")
+
+                    if IS_FINISHED_FIELD in request_structure:
+                        is_api_call_finished = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
+                        if is_api_call_finished is None:
+                            is_continued = False
+                        else:
+                            is_continued = not(is_api_call_finished)
+                    else:
+                        is_continued = False
+
+                    if not has_search_id:
+                        flights = self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH])
+                        if flights:
+                            all_flights.extend(flights)
+                        else:
+                            logger.warning(f"No flights found in response for {source.website.name}")
+
+                    if is_continued:
+                        await asyncio.sleep(3)
+
+                except Exception as e:
+                    logger.error(f"Error fetching flights from {source.website.name}: {str(e)}")
                     raise interfaces.UnsuccessfulRequest()
 
-                response_data = response.content_json
-                logger.info(f"Response data: {response_data}")
+            if SEARCH_ID_REQUEST_STRUCTURE not in request_structure or not request_structure[SEARCH_ID_REQUEST_STRUCTURE]:
+                result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
+                logger.info(f"result: {result}")
+                return result
 
-                # Check if is_finished_field exists in request_structure
-                if IS_FINISHED_FIELD in request_structure:
-                    logger.info(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
-                    logger.info(f'request_structure[IS_FINISHED_FIELD]: {request_structure[IS_FINISHED_FIELD]}')
-                    
-                    is_api_call_finished = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
-                    if is_api_call_finished is None: 
-                        is_continued = False
-                    else: 
-                        is_continued = not(is_api_call_finished)
-                else:
-                    # If no is_finished_field, we only want one response
-                    is_continued = False
+            search_id_request_structure = request_structure[SEARCH_ID_REQUEST_STRUCTURE]
+            search_id = self._extract_nested_value(response_data, search_id_request_structure[SEARCH_ID])
+            logger.info(f'search id: {search_id}')
 
-                if not has_search_id:
-                    flights = self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH])
-                    if flights:
-                        all_flights.extend(flights)
+            is_continued = True
+            while is_continued:
+                if search_id_request_structure[METHOD] == GET_METHOD:
+                    if search_id_request_structure[WAY] == PARAMS:
+                        search_id_request_params = {
+                            "search_id": search_id
+                        }
+                        search_id_request_params = self._format_inputs(search_id_request_structure, search_id_request_params)
+
+                        async with session.get(
+                            search_id_request_structure[API_URL],
+                            headers=base_headers,
+                            params=search_id_request_params,
+                        ) as response:
+                            if response.status != 200:
+                                raise interfaces.UnsuccessfulRequest()
+                            response_data = await response.json()
+
                     else:
-                        logger.warning(f"No flights found in response for {source.website.name}")
+                        async with session.get(
+                            search_id_request_structure[API_URL] + '/' + search_id,
+                            headers=base_headers,
+                        ) as response:
+                            if response.status != 200:
+                                raise interfaces.UnsuccessfulRequest()
+                            response_data = await response.json()
 
+                else:
+                    search_id_body = {
+                        "search_id": search_id
+                    }
+                    search_id_body = self._format_inputs(search_id_request_structure)
+
+                    async with session.post(
+                        search_id_request_structure[API_URL],
+                        headers=base_headers,
+                        json=search_id_body
+                    ) as response:
+                        if response.status != 200:
+                            raise interfaces.UnsuccessfulRequest()
+                        response_data = await response.json()
+
+                all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
+                
+                if IS_FINISHED_FIELD in request_structure:
+                    is_continued = not(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
+                else:
+                    is_continued = False
+                    
                 if is_continued:
-                    time.sleep(3)
+                    all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
+                    await asyncio.sleep(3)
 
-            except Exception as e:
-                logger.error(f"Error fetching flights from {source.website.name}: {str(e)}")
-                raise interfaces.UnsuccessfulRequest()
-
-        # Check if search_id_request_structure exists before proceeding
-        if SEARCH_ID_REQUEST_STRUCTURE not in request_structure or not request_structure[SEARCH_ID_REQUEST_STRUCTURE]:
             result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
             logger.info(f"result: {result}")
             return result
-
-        search_id_request_structure = request_structure[SEARCH_ID_REQUEST_STRUCTURE]
-        search_id = self._extract_nested_value(response_data, search_id_request_structure[SEARCH_ID])
-        logger.info(f'search id: {search_id}')
-
-        is_continued = True
-        while is_continued:
-            if search_id_request_structure[METHOD] == GET_METHOD:
-                if search_id_request_structure[WAY] == PARAMS:
-                    logger.info(f"Making GET request to {search_id_request_structure[API_URL]}")
-                    logger.info(f"Headers: {search_id_request_structure[HEADERS]}")
-                    logger.info(f"Body: {formatted_params}")
-                    search_id_request_params = {
-                        "search_id": search_id
-                    }
-                    search_id_request_params = self._format_inputs(search_id_request_structure, search_id_request_params)
-
-                    response = self.http_requester.get(
-                        url=search_id_request_structure[API_URL],
-                        headers=base_headers,
-                        params=search_id_request_params,
-                    )
-
-                else:
-                    logger.info(f"Making GET request to {request_structure[API_URL]}/{search_id}")
-                    logger.info(f"Headers: {request_structure[HEADERS]}")
-                    
-                    response = self.http_requester.get(
-                        url=search_id_request_structure[API_URL] + '/' + search_id,
-                        headers=base_headers,
-                    )
-            else:
-                logger.info(f"Making POST request to {request_structure[API_URL]}")
-                logger.info(f"Headers: {request_structure[HEADERS]}")
-                logger.info(f"search id: {search_id}")
-
-                search_id_body = {
-                    "search_id": search_id
-                }
-                search_id_body = self._format_inputs(search_id_request_structure)
-
-                response = self.http_requester.post(
-                    url=search_id_request_structure[API_URL],
-                    headers={
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36'
-                    },
-                    json=search_id_body
-                )
-
-            if response.status_code != 200:
-                raise interfaces.UnsuccessfulRequest()
-
-            response_data = response.content_json
-            all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
-            
-            # Check if is_finished_field exists before using it
-            if IS_FINISHED_FIELD in request_structure:
-                is_continued = not(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
-            else:
-                is_continued = False
-                
-            if is_continued:
-                all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
-                time.sleep(3)
-
-        result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
-        logger.info(f"result: {result}")
-        return result
 
     def _format_inputs(self, request_structure, search_params: interfaces.CrawlRequest):
         def set_nested_value(target, keys, value):
