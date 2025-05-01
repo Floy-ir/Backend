@@ -295,7 +295,9 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         Website.objects.filter(
             ~Q(last_crawled_uid=request.uid),
             flight__origin=request.origin,
-            flight__destination=request.destination
+            flight__destination=request.destination,
+            flight__departure_timestamp__gte=request.departure_timestamp,
+            flight__departure_timestamp__lt=request.departure_timestamp + SECOND_IN_A_DAY
         ).update(is_valid=False)
 
 
