@@ -322,11 +322,13 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 if search_id_request_structure[WAY] == PARAMS:
                     logger.info(f"Making GET request to {search_id_request_structure[API_URL]}")
                     logger.info(f"Headers: {search_id_request_structure[HEADERS]}")
-                    logger.info(f"Body: {formatted_params}")
+
                     search_id_request_params = {
                         "search_id": search_id
                     }
                     search_id_request_params = self._format_inputs(search_id_request_structure, search_id_request_params)
+
+                    logger.info(f"Params: {search_id_request_params}")
 
                     response = self.http_requester.get(
                         url=search_id_request_structure[API_URL],
@@ -354,10 +356,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
                 response = self.http_requester.post(
                     url=search_id_request_structure[API_URL],
-                    headers={
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36'
-                    },
+                    headers=base_headers,
                     json=search_id_body
                 )
 
@@ -465,8 +464,19 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         value = int(str(value).split(" ")[0]) if value else 20 
 
                     # Apply seat class mapping if this is the seat_class field
-                    if field_name == "seat_class" and value in seat_class_map:
-                        value = seat_class_map[value]
+                    if field_name == "seat_class":
+                        if seat_class_map.get(value, None) is not None:
+                            value = seat_class_map[value]
+                            
+                        value = value.lower()
+                        if "economy" in value:
+                            value = interfaces.SeatClass.ECONOMY_CLASS
+                        elif "business" in value:
+                            value = interfaces.SeatClass.BUSINESS_CLASS
+                        elif "first" in value:
+                            value = interfaces.SeatClass.FIRST_CLASS
+                        else:
+                            value = interfaces.SeatClass.ECONOMY_CLASS
 
                     # Convert datetime strings to timestamps
                     if field_name in ["departure_timestamp", "arrival_timestamp"] and isinstance(value, str):
