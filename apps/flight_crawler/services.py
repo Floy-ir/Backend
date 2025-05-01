@@ -465,7 +465,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
                     # Apply seat class mapping if this is the seat_class field
                     if field_name == "seat_class":
-                        value = seat_class_map[value]
+                        if seat_class_map.get(value, None) is not None:
+                            value = seat_class_map[value]
+                            
                         value = value.lower()
                         if "economy" in value:
                             value = interfaces.SeatClass.ECONOMY_CLASS
