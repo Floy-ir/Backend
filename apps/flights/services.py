@@ -292,12 +292,15 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             logger.info(f"Created or updated flight with uid: {flight.uid}")
         
 
+        print(f"\n\nrequest.crawl_timestamp: {request.crawl_timestamp}\n\n")
+        print(f"\n\nrequest.crawl_timestamp + SECOND_IN_A_DAY: {request.crawl_timestamp + SECOND_IN_A_DAY}\n\n")
+
         Website.objects.filter(
             ~Q(last_crawled_uid=request.uid),
             flight__origin=request.origin,
             flight__destination=request.destination,
-            flight__departure_timestamp__gte=request.departure_timestamp,
-            flight__departure_timestamp__lt=request.departure_timestamp + SECOND_IN_A_DAY
+            flight__departure_timestamp__gte=request.crawl_timestamp,
+            flight__departure_timestamp__lt=request.crawl_timestamp + SECOND_IN_A_DAY
         ).update(is_valid=False)
 
 
