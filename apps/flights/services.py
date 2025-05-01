@@ -82,6 +82,20 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             website_filters=website_filter,
         ).order_by('cheapest_price')
 
+        if flights_qs.count() == 0:
+            return interfaces.GetFlightsResponse(
+                count=0,
+                filters=interfaces.GetFlightsFilters(
+                    min_price=0,
+                    max_price=0,
+                    allowed_weights=[],
+                    seat_classes=[],
+                    airlines=[],
+                    websites=[],
+                ),
+                results=[],
+            )
+
         websites_uid = set()
         airlines_uid = set()
         allowed_weights = set()
