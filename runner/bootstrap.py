@@ -124,6 +124,7 @@ class Bootstrapper:
                 claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
                 airlines_service=self._airlines_service,
                 event_bus=self._event_bus,
+                date_time_utils=_date_time_utils,
                 flight_crawler_service=self._flight_crawler_service,
                 cache_service=self._cache_service
             )

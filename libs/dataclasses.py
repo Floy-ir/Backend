@@ -40,6 +40,7 @@ IPField = str # todo: change this to validate ips
 URLField = str # todo: change this to validate url
 PositiveIntegerField = Annotated[NonNegativeInt, Field(gt=0)]
 PasswordField = str
+DateField = Annotated[str, StringConstraints(pattern=r'^\d{4}-\d{2}-\d{2}$')]
 
 class File(BaseModel):
     buffer: bytes

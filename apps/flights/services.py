@@ -8,6 +8,7 @@ from apps.accounts import interfaces as accounts_interfaces
 from apps.event_bus import interfaces as event_bus_interfaces
 from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from libs.redis_client import interfaces as cache_interfaces
+from utils.date_time import interfaces as date_time_interfaces
 from .models import Flight, Website
 from constants import SECOND_IN_A_DAY
 from django.db.models import Q
@@ -21,6 +22,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                  event_bus: event_bus_interfaces.AbstractEventBus,
                  airlines_service: airlines_interfaces.AbstractAirlineService,
                  flight_crawler_service: flight_crawler_interfaces.AbstractFlightCrawler,
+                 date_time_utils: date_time_interfaces.AbstractDateTime,
                  cache_service: cache_interfaces.ICacheService
                  ):
         self.claim = claim
@@ -29,6 +31,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         self.airlines_service = airlines_service
         self.cache_service = cache_service
         self.flight_crawler_service = flight_crawler_service
+        self.date_time_utils = date_time_utils  
 
         self.event_bus.subscribe(self.claim, 'flight_crawler_service/CRAWLED_FLIGHT', self)
 
@@ -180,41 +183,56 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
     def get_cheapest_ticket(self, request: interfaces.GetCheapestTicketRequest) -> interfaces.GetCheapestResponse:
         logger.info(f"request: {request}")
-        results: List[interfaces.FlightWithoutWebsiteDTO] = []
-        base_timestamp = request.reference_timestamp
+        results: List[interfaces.CheapestFlightDTO] = []
+        base_timestamp = self.date_time_utils.convert_datetime_string_to_timestamp(request.reference_date, '%Y-%m-%d')
 
-        for day_offset in range(request.backward_day, request.forward_day):
+        total_days = request.forward_day + request.backward_day
+        start_day = -request.backward_day
+
+        flights = Flight.objects.filter(
+            origin=request.origin,
+            destination=request.destination,
+            departure_timestamp__gte=base_timestamp + (start_day * SECOND_IN_A_DAY),
+            departure_timestamp__lt=base_timestamp + ((start_day + total_days) * SECOND_IN_A_DAY),
+            cheapest_price__isnull=False
+        ).order_by('departure_timestamp', 'cheapest_price')
+
+        flights_by_day = {}
+        for flight in flights:
+            day_offset = (flight.departure_timestamp - base_timestamp) // SECOND_IN_A_DAY
+            if day_offset not in flights_by_day:
+                flights_by_day[day_offset] = []
+            flights_by_day[day_offset].append(flight)
+
+        for day_offset in range(start_day, request.forward_day):
             start_ts = base_timestamp + day_offset * SECOND_IN_A_DAY
-            end_ts = start_ts + SECOND_IN_A_DAY
-            cache_key = f"flights:cheapest:{start_ts}:{end_ts}"
-            cheapest_flight = self.cache_service.get(cache_key)
+            start_date = self.date_time_utils.convert_timestamp_to_date(start_ts, '%Y-%m-%d')
+            # Get the cheapest flight for this day if any exists
+            cheapest_flight = None
+            if day_offset in flights_by_day and flights_by_day[day_offset]:
+                cheapest_flight = flights_by_day[day_offset][0]
 
             if cheapest_flight:
-                results.append(self._convert_flight_dict_without_website_to_dto(cheapest_flight))
-                continue
-
-            cheapest_flight = (
-                Flight.objects.filter(
+                cheapest_dto = interfaces.CheapestFlightDTO(
+                    origin=cheapest_flight.origin,
+                    destination=cheapest_flight.destination,
+                    date=start_date,
+                    price=cheapest_flight.cheapest_price,
+                )
+            else:
+                cheapest_dto = interfaces.CheapestFlightDTO(
                     origin=request.origin,
                     destination=request.destination,
-                    departure_timestamp__gte=start_ts,
-                    departure_timestamp__lt=end_ts,
-                    cheapest_price__isnull=False
+                    date=start_date,
+                    price=0,
                 )
-                .order_by('cheapest_price')
-                .first()
-            )
-
-            if cheapest_flight:
-                cheapest_dto = self._convert_flight_db_without_website_to_dto(cheapest_flight)
-                self.cache_service.set(cache_key, cheapest_dto.model_dump())
-                results.append(self._convert_flight_dict_without_website_to_dto(cheapest_flight))
+            results.append(cheapest_dto)
 
         result = interfaces.GetCheapestResponse(
             count=len(results),
             results=results
         )
-        logger.info("result: ", result)
+        logger.info(f"result: {result}")
         return result
 
     def _create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
@@ -292,10 +310,15 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             logger.info(f"Created or updated flight with uid: {flight.uid}")
         
 
+        print(f"\n\nrequest.crawl_timestamp: {request.crawl_timestamp}\n\n")
+        print(f"\n\nrequest.crawl_timestamp + SECOND_IN_A_DAY: {request.crawl_timestamp + SECOND_IN_A_DAY}\n\n")
+
         Website.objects.filter(
             ~Q(last_crawled_uid=request.uid),
             flight__origin=request.origin,
-            flight__destination=request.destination
+            flight__destination=request.destination,
+            flight__departure_timestamp__gte=request.crawl_timestamp,
+            flight__departure_timestamp__lt=request.crawl_timestamp + SECOND_IN_A_DAY
         ).update(is_valid=False)
 
 
@@ -337,7 +360,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             seat_class=flight.seat_class,
             price=flight.cheapest_price,
             redirect_url=flight.cheapest_base_redirect_url,
-            website=flight.cheapest_website,
+            website=flight.cheapest_website_uid,
         )
 
     @staticmethod

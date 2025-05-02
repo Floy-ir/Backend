@@ -90,3 +90,12 @@ class AbstractDateTime(ABC):
         returns:
         string
         """
+
+    def convert_jalali_date_to_timestamp(self, jalali_date: str) -> int:
+        """
+        Convert a Jalali date string to a Unix timestamp
+
+        Args:
+            jalali_date: Jalali date string in the format YYYY-MM-DD
+        """
+        raise NotImplementedError

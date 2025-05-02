@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from .interfaces import  AbstractDateTime
 from khayyam import JalaliDate
 import pytz
 
+
+logger = logging.getLogger(__name__)
 
 class DateTimeUtils(AbstractDateTime):
     def get_current_timestamp(self) -> int:
@@ -27,10 +30,28 @@ class DateTimeUtils(AbstractDateTime):
         return formatted_date
 
     def convert_timestamp_to_jalali_date(self, timestamp: int, separator: str = '-') -> str:
-        date_obj = datetime.fromtimestamp(timestamp)
+        # Convert timestamp to datetime in UTC
+        date_obj = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        
+        # Convert to Tehran timezone (GMT+3:30)
+        tehran_tz = pytz.FixedOffset(210)  # 210 minutes = 3 hours 30 minutes
+        date_obj = date_obj.astimezone(tehran_tz)
+        
+        # Convert to Jalali date
         jalali_date = JalaliDate(date_obj)
         formatted_date = jalali_date.strftime(f"%Y{separator}%m{separator}%d")
         return formatted_date
+    
+    def convert_jalali_date_to_timestamp(self, jalali_date: str) -> int:
+        jalali_parts = [int(part) for part in jalali_date.split('-')]
+        jalali = JalaliDate(*jalali_parts) 
+        gregorian_date = jalali.todate() 
+        gregorian_datetime = datetime.combine(gregorian_date, datetime.min.time())
+        
+        gmt_plus_3_30 = pytz.FixedOffset(210)
+        gregorian_datetime = gmt_plus_3_30.localize(gregorian_datetime)
+
+        return int(gregorian_datetime.timestamp())
 
     def convert_date_time_to_timestamp(self, time: str, date: str) -> int:
         # Combine date and time into a single string
