@@ -4,6 +4,7 @@ from apps.accounts import interfaces as accounts_interfaces
 from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from apps.event_bus import interfaces as event_bus_interfaces
+from utils.date_time import interfaces as date_time_interfaces
 from typing import Dict, Any
 
 
@@ -122,3 +123,38 @@ class FakeEventBus(event_bus_interfaces.AbstractEventBus):
 
     def subscribe(self, caller: accounts_interfaces.Session, match_string: str, listener: event_bus_interfaces.AbstractEventListener) -> object:
         pass
+
+
+
+class FakeDateTime(date_time_interfaces.AbstractDateTime):
+    def get_current_timestamp(self) -> int:
+        return 10
+
+    def get_timestamp_of_interval_ahead(self, day_interval: int) -> int:
+        return 10 + day_interval * 10
+    
+    def get_start_timestamp_of_day_from_today(self, timedelta_days: int) -> int:
+        return 10 + timedelta_days * 10
+    
+    def get_end_of_day_timestamp_from_today(self, timedelta_days: int) -> int:
+        return 10 + timedelta_days * 10
+    
+    def convert_timestamp_to_date(self, timestamp: int, date_format: str) -> str:
+        pass
+    
+    def convert_timestamp_to_jalali_date(self, timestamp: int, separator: str = '-') -> str:
+        pass
+    
+    def convert_date_time_to_timestamp(self, time: str, date: str) -> int:
+        pass
+    
+    def convert_iso_datetime_to_timestamp(self, datetime_str: str) -> int:
+        pass
+    
+    def convert_datetime_string_to_timestamp(self, datetime_str: str, format_str: str) -> int:
+        pass
+    
+    def miladi_to_shamsi(self, date_str, separator: str = '-') -> str:
+        pass
+    
+    

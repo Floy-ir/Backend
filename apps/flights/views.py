@@ -16,7 +16,7 @@ class FlightsViewSet(viewsets.GenericViewSet):
         return response.Response(results.model_dump())
 
     def get_cheapest_ticket(self, request):
-        service = get_bootstrapper().get_flights_service(**request.query_params.dict())
-        cheapest_request = interfaces.GetCheapestTicketRequest()
+        service = get_bootstrapper().get_flights_service()
+        cheapest_request = interfaces.GetCheapestTicketRequest(**request.query_params.dict())
         results = service.get_cheapest_ticket(request=cheapest_request)
         return response.Response(results.model_dump())

@@ -75,7 +75,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
             logger.debug(f"cities ==>>> {cities}")
             for i in range(from_days_ahead, to_days_ahead): 
-                target_timestamp = self.date_time.get_timestamp_of_interval_ahead(day_interval=i)
+                target_timestamp = self.date_time.get_start_timestamp_of_day_from_today(timedelta_days=i)
                 
                 for first_city in cities.results:
                     for sec_city in first_city.destinations:
