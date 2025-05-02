@@ -115,12 +115,19 @@ class GetFlightsResponse(dataclasses.BaseModel):
 class GetCheapestTicketRequest(dataclasses.BaseModel):
     origin: str
     destination: str
-    reference_timestamp: int
+    reference_date: dataclasses.DateField
     forward_day: int
     backward_day: int
 
 
+class CheapestFlightDTO(dataclasses.BaseModel):
+    origin: str
+    destination: str
+    date: dataclasses.DateField
+    price: float
+
+
 class GetCheapestResponse(dataclasses.BaseModel):
     count: int
-    results: List[FlightWithoutWebsiteDTO]
+    results: List[CheapestFlightDTO]
 

@@ -31,6 +31,17 @@ class DateTimeUtils(AbstractDateTime):
         jalali_date = JalaliDate(date_obj)
         formatted_date = jalali_date.strftime(f"%Y{separator}%m{separator}%d")
         return formatted_date
+    
+    def convert_jalali_date_to_timestamp(self, jalali_date: str) -> int:
+        jalali_parts = [int(part) for part in jalali_date.split('-')]
+        jalali = JalaliDate(*jalali_parts) 
+        gregorian_date = jalali.todate() 
+        gregorian_datetime = datetime.combine(gregorian_date, datetime.min.time())
+        
+        gmt_plus_3_30 = pytz.FixedOffset(210)
+        gregorian_datetime = gmt_plus_3_30.localize(gregorian_datetime)
+
+        return int(gregorian_datetime.timestamp())
 
     def convert_date_time_to_timestamp(self, time: str, date: str) -> int:
         # Combine date and time into a single string
