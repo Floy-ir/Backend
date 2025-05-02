@@ -79,14 +79,14 @@ class FlightWithoutWebsiteDTO(dataclasses.BaseModel):
     allowed_weight: int
     seat_class: SeatClass
     price: float
-    redirect_url: dataclasses.URLField
+    redirect_url: dataclasses.URLField | None = None
     website: WebsiteDetail
 
 
 class AirlineFilters(dataclasses.BaseModel):
     uid: dataclasses.UUIDField
     name: str
-    logo: dataclasses.URLField
+    logo: dataclasses.URLField | None = None
     min_price: float
 
 
@@ -94,7 +94,7 @@ class WebsiteFilters(dataclasses.BaseModel):
     uid: dataclasses.UUIDField
     name: str
     name_fa: str
-    logo: dataclasses.URLField
+    logo: dataclasses.URLField | None = None
     min_price: float
 
 
