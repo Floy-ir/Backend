@@ -184,7 +184,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
     def get_cheapest_ticket(self, request: interfaces.GetCheapestTicketRequest) -> interfaces.GetCheapestResponse:
         logger.info(f"request: {request}")
         results: List[interfaces.CheapestFlightDTO] = []
-        base_timestamp = self.date_time_utils.convert_jalali_date_to_timestamp(request.reference_date)
+        base_timestamp = self.date_time_utils.convert_datetime_string_to_timestamp(request.reference_date, '%Y-%m-%d')
 
         total_days = request.forward_day + request.backward_day
         start_day = -request.backward_day
@@ -206,25 +206,24 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
         for day_offset in range(start_day, request.forward_day):
             start_ts = base_timestamp + day_offset * SECOND_IN_A_DAY
-            jalali_date = self.date_time_utils.convert_timestamp_to_jalali_date(start_ts, '-')
-
+            start_date = self.date_time_utils.convert_timestamp_to_date(start_ts, '%Y-%m-%d')
             # Get the cheapest flight for this day if any exists
             cheapest_flight = None
             if day_offset in flights_by_day and flights_by_day[day_offset]:
-                cheapest_flight = flights_by_day[day_offset][0]  # Already ordered by cheapest_price
+                cheapest_flight = flights_by_day[day_offset][0]
 
             if cheapest_flight:
                 cheapest_dto = interfaces.CheapestFlightDTO(
                     origin=cheapest_flight.origin,
                     destination=cheapest_flight.destination,
-                    date=jalali_date,
+                    date=start_date,
                     price=cheapest_flight.cheapest_price,
                 )
             else:
                 cheapest_dto = interfaces.CheapestFlightDTO(
                     origin=request.origin,
                     destination=request.destination,
-                    date=jalali_date,
+                    date=start_date,
                     price=0,
                 )
             results.append(cheapest_dto)
