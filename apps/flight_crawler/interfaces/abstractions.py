@@ -5,10 +5,6 @@ from typing import Dict
 
 class AbstractFlightCrawler(ABC):
     @abstractmethod
-    def test_celery(): 
-        raise NotImplementedError
-    
-    @abstractmethod
     def crawl_scheduled_flights(self, days_ahead: int = None) -> None:         
         """
             Crawl flights based on schedule parameters.
