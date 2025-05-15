@@ -313,6 +313,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             return result
 
         search_id_request_structure = request_structure[SEARCH_ID_REQUEST_STRUCTURE]
+        logger.debug(f"\n\n\nsearch_id_request_structure: {search_id_request_structure}\n\n\n")
         search_id = self._extract_nested_value(response_data, search_id_request_structure[SEARCH_ID])
         logger.info(f'search id: {search_id}')
 
@@ -345,14 +346,16 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         headers=base_headers,
                     )
             else:
-                logger.info(f"Making POST request to {request_structure[API_URL]}")
-                logger.info(f"Headers: {request_structure[HEADERS]}")
+                logger.info(f"Making POST request to {search_id_request_structure[API_URL]}")
+                logger.info(f"Headers: {search_id_request_structure[HEADERS]}")
                 logger.info(f"search id: {search_id}")
 
                 search_id_body = {
                     "search_id": search_id
                 }
-                search_id_body = self._format_inputs(search_id_request_structure)
+                search_id_body = self._format_inputs(search_id_request_structure, search_id_body)
+
+                logger.debug(f"\n\n\nsearch_id_body: {search_id_body}\n\n\n")
 
                 response = self.http_requester.post(
                     url=search_id_request_structure[API_URL],
@@ -364,11 +367,17 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 raise interfaces.UnsuccessfulRequest()
 
             response_data = response.content_json
+            logger.debug(f"\n\n 370 line response_data: {response_data}\n\n\n")
             all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
             
             # Check if is_finished_field exists before using it
             if IS_FINISHED_FIELD in request_structure:
-                is_continued = not(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
+                is_continued = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
+                print(f"\n\n\nis_continued: {is_continued}\n\n\n")
+                if is_continued is None:
+                    is_continued = False
+                else:
+                    is_continued = not(is_continued)
             else:
                 is_continued = False
                 
@@ -451,7 +460,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         parsed_flights = []
         for raw_flight in flights:
             remianing_seat = self._extract_nested_value(raw_flight, fields_map["remaining_seat"])
-            if remianing_seat is None or remianing_seat <= 0: 
+            if remianing_seat is None or int(remianing_seat) <= 0: 
                 continue
 
             try:
@@ -465,6 +474,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
                     # Apply seat class mapping if this is the seat_class field
                     if field_name == "seat_class":
+                        if seat_class_map.get('*', None) is not None:
+                            value = seat_class_map['*']
+
                         if seat_class_map.get(value, None) is not None:
                             value = seat_class_map[value]
                             
@@ -481,7 +493,19 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     # Convert datetime strings to timestamps
                     if field_name in ["departure_timestamp", "arrival_timestamp"] and isinstance(value, str):
                         date_format = date_fields.get('date_format', '%Y-%m-%dT%H:%M:%S')
-                        value = self.date_time.convert_datetime_string_to_timestamp(value, date_format)
+                        if date_format == "splitted":
+                            day_format = date_fields.get('day_format', '%Y-%m-%d')
+                            time_format = date_fields.get('time_format', '%H:%M')
+                            date = value 
+                            
+                            if field_name == "departure_timestamp":
+                                time = self._extract_nested_value(raw_flight, fields_map["departure_time"])
+                            else:
+                                time = self._extract_nested_value(raw_flight, fields_map["arrival_time"])
+
+                            value = self.date_time.convert_datetime_string_to_timestamp(f"{date} {time}", f"{day_format} {time_format}")
+                        else:
+                            value = self.date_time.convert_datetime_string_to_timestamp(value, date_format)
                         
                     parsed_dict[field_name] = value
 
