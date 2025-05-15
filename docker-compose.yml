@@ -68,13 +68,14 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - .:/app
-    entrypoint: celery -A runner.schedule
+    entrypoint: celery -A runner.schedule.celery
     command: worker --beat --loglevel=DEBUG
     env_file:
       - .env
     depends_on:
       - db
       - redis
+      - rabbitmq
 
   rabbitmq:
     image: docker.arvancloud.ir/rabbitmq:3.12-management-alpine
