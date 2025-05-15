@@ -1,29 +1,34 @@
-from runner.schedule.celery import Celery
+import os
+from celery import Celery
+import logging
 from celery.schedules import crontab
 
 
-app = Celery('floy')
-app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks()
+logger = logging.getLogger(__name__)
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'runner.settings')
+
+app = Celery(
+    'floy', 
+    broker=os.getenv("BROKER_URL", "amqp://rabbitmq:5672"),
+    config_source='runner.schedule.celery_config'
+    )
+
 
 # Configure Celery Beat schedule
 app.conf.beat_schedule = {
-    'crawl-today-flights': {
-        'task': 'apps.flight_crawler.tasks.crawl_flights',
+    'crawl_three_days_ahead': {
+        'task': 'runner.schedule.tasks.crawl_three_days_ahead',
         'schedule': crontab(minute='*/5'),  # Every 5 minutes
-        'args': (1,),  # 1 day ahead
         'kwargs': {'priority_cities': True}
     },
-    'crawl-tomorrow-flights': {
-        'task': 'apps.flight_crawler.tasks.crawl_flights',
-        'schedule': crontab(minute='*/5'),  # Every 5 minutes
-        'args': (2,),  # 2 days ahead
-        'kwargs': {'priority_cities': True}
-    },
-    'crawl-future-flights': {
-        'task': 'apps.flight_crawler.tasks.crawl_flights',
-        'schedule': crontab(minute='*/15'),  # Every 15 minutes
-        'args': (None,),  # All future dates
+    'crawl_four_and_more_days_ahead': {
+        'task': 'runner.schedule.tasks.crawl_four_and_more_days_ahead',
+        'schedule': crontab(minute='*/10'),  # Every 15 minutes
         'kwargs': {'priority_cities': False}
+    },
+    'test_celery': {
+        'task': 'runner.schedule.tasks.test_celery',
+        'schedule': crontab(minute='*/1'), 
     }
 }
