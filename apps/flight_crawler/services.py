@@ -1,5 +1,6 @@
 from typing import Dict, List
 from uuid import uuid4
+from string import Template
 import time
 import logging
 from apps.flight_city import interfaces as flight_city_interfaces
@@ -58,7 +59,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                  http_requester: http_requester_interfaces.AbstractHTTPRequester,
                  cache_service: cache_interfaces.ICacheService,
                  airline_service: airline_interfaces.AbstractAirlineService,
-                 max_adults: int = 2,
+                 max_adults: int = 1,
                  ):
         self.claim = claim
         self.date_time = date_time_utils
@@ -86,18 +87,17 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         logger.info(f"Processing route: {origin} -> {destination}")
 
                         try:
-                            for adult_cnt in range(1, self.max_adults): 
-                                request = interfaces.CrawlRequest(
-                                    origin=origin,
-                                    destination=destination,
-                                    departure_timestamp=target_timestamp,
-                                    adult=adult_cnt,
-                                    child=0,
-                                    infant=0
-                                )
-                                
-                                flights.extend(self._crawl(request=request))
+                            request = interfaces.CrawlRequest(
+                                origin=origin,
+                                destination=destination,
+                                departure_timestamp=target_timestamp,
+                                adult=1,
+                                child=0,
+                                infant=0
+                            )
                             
+                            flights.extend(self._crawl(request=request))
+                        
                             self.event_bus.emit(
                                 caller=self.claim,
                                 event_or_command=event_bus_interfaces.EventOrCommand(
@@ -146,7 +146,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 
             return flights
         except Exception as e: 
-            logger.error(f"Error in _crawl: {str(e)}")
+            logger.error(f"Error in _crawl: {e}")
             raise e
 
     def upload_image(self, request: interfaces.UploadImageRequest) -> interfaces.WebsiteDTO:
@@ -454,20 +454,67 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
     def _parse_response(self, source: WebsiteRoute, flights, parser, request) -> List[interfaces.Flight]:
         logger.debug(f"source: {source.__dict__}, parser: {parser}")
         fields_map = parser.get(FIELDS, {})
+        website = source.website
         airline_value_map = parser.get("airline_mapping", {})
         seat_class_map = parser.get("seat_class_mapping", {})
         date_fields = parser.get(DATE_FIELDS, {})
+        base_redirect_config = parser.get("base_redirect_config", {})
+        price_normalize_num = 10 if parser.get("currency", "IRR") == "IRR" else 1
+
+        base_redirect_url = website.base_url
+        if base_redirect_config:
+            base_redirect_city_map = source.config.get(CITY_MAPPING, {})
+            base_redirect_origin = base_redirect_city_map.get(request.origin, request.origin)
+            logger.debug(f"\n\nbase_redirect_origin ==>> {base_redirect_origin}\n\n")
+            base_redirect_dest = base_redirect_city_map.get(request.destination, request.destination)
+            logger.debug(f"\n\n base_redirect_dest ==>> {base_redirect_dest}\n\n")
+
+            base_redirect_date = base_redirect_config.get(DATE_FIELDS, {})
+            if base_redirect_date.get(IS_JALALI, False):
+                redirect_date = self.date_time.convert_timestamp_to_jalali_date(
+                    timestamp=request.departure_timestamp,
+                    separator=base_redirect_date.get(SEPARATOR, "-")
+                )
+            else:
+                redirect_date = self.date_time.convert_timestamp_to_date(
+                    timestamp=request.departure_timestamp,
+                    date_format=base_redirect_date.get('date_format', "%Y-%m-%d")
+                )
+
+            logger.debug(f"redirect_date: {redirect_date}")
+
+            base_redirect_url_template = Template(website.redirect_url_template)
+
+            logger.debug(f"base_redirect_template: {base_redirect_url_template}")
+
+            base_redirect_url = base_redirect_url_template.safe_substitute(
+                origin=base_redirect_origin,
+                destination=base_redirect_dest,
+                departure_date=redirect_date
+            )
+
+            logger.debug(f"base_redirect_Url: {base_redirect_url}")
+
         parsed_flights = []
+
+
+        print(f"\n\nlen_flights: {len(flights)}\n\n")
+
         for raw_flight in flights:
+            logger.debug(f"\nraw_flight: {raw_flight}\n\n")
             remianing_seat = self._extract_nested_value(raw_flight, fields_map["remaining_seat"])
-            if remianing_seat is None or int(remianing_seat) <= 0: 
+            if remianing_seat is None or int(remianing_seat) <= 0:
+                logger.debug("don't add because of non remaining seat")
                 continue
 
             try:
                 parsed_dict = {}
-
+                print(f"\n\nhello\n\n")
                 for field_name, json_path in fields_map.items():
                     value = self._extract_nested_value(raw_flight, json_path)
+
+                    if field_name in ['adult_price', 'infant_price', 'child_price'] and value is not None:
+                        value = int(value) / price_normalize_num
                     
                     if field_name == "allowed_weight": 
                         value = int(str(value).split(" ")[0]) if value else 20 
@@ -519,8 +566,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
                 parsed_dict["provider_uid"] = str(source.website.uid)
 
-                #TODO: remove this 
-                parsed_dict["base_redirect_url"] = source.website.base_url
+                parsed_dict["base_redirect_url"] = base_redirect_url
 
                 # if not source.website.redirect_url_config: 
                 #     redirect_url_departure_date = parsed_dict["departure_timestamp"]
@@ -564,8 +610,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 #     else:
                 #         parsed_dict["two_adult_redirect_url"] = None 
                 
+                logger.debug(f"parsed_dict: {parsed_dict}")
                 try:
-                    logger.debug(f"parsed_dict: {parsed_dict}")
                     parsed_flight = interfaces.Flight(**parsed_dict)
                     parsed_flights.append(parsed_flight)
                 except Exception as e:
