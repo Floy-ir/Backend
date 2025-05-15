@@ -307,7 +307,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             logger.debug(f"\n\nwebsite: {website.__dict__}\n\n")
             
             flight.update_cheapest_info()
-            logger.info(f"Created or updated flight with uid: {flight.uid}")
+            logger.info(f"111 Created or updated flight with uid: {flight.uid}")
         
 
         print(f"\n\nrequest.crawl_timestamp: {request.crawl_timestamp}\n\n")
