@@ -27,8 +27,4 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/10'),  # Every 15 minutes
         'kwargs': {'priority_cities': False}
     },
-    'test_celery': {
-        'task': 'runner.schedule.tasks.test_celery',
-        'schedule': crontab(minute='*/1'), 
-    }
 }

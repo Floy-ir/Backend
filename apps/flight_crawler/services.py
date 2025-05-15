@@ -70,10 +70,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.http_requester = http_requester
         self.max_adults = max_adults
 
-
-    def test_celery(self):
-        print("\n\ntest celery\n\n")
-
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
         try:
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
