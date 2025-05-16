@@ -207,9 +207,12 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         for day_offset in range(start_day, request.forward_day):
             start_ts = base_timestamp + day_offset * SECOND_IN_A_DAY
             start_date = self.date_time_utils.convert_timestamp_to_date(start_ts, '%Y-%m-%d')
+            
             # Get the cheapest flight for this day if any exists
             cheapest_flight = None
             if day_offset in flights_by_day and flights_by_day[day_offset]:
+                # Sort flights for this day by price to get the cheapest one
+                flights_by_day[day_offset].sort(key=lambda x: x.cheapest_price)
                 cheapest_flight = flights_by_day[day_offset][0]
 
             if cheapest_flight:
