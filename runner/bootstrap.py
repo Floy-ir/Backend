@@ -13,6 +13,7 @@ from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
 from apps.flights.services import FlightsService
 from apps.event_bus.services import EventBus
+from apps.statistics.services import StatisticsService
 # libs services
 from libs.redis_client.services import CacheService
 from utils.date_time.services import DateTimeUtils
@@ -130,6 +131,13 @@ class Bootstrapper:
             )
         )
 
+        self._statistics_service = kwargs.get(
+            'statistics_service',
+            StatisticsService(
+                claim=accounts_interfaces.Session.for_internal_app(uid='statistics_service'),
+            )
+        )
+
 
     def get_flight_city_service(self):
         return self._flight_city_service
@@ -148,6 +156,9 @@ class Bootstrapper:
 
     def get_flight_crawler_service(self) -> FlightCrawlerService:
         return self._flight_crawler_service
+    
+    def get_statistics_service(self) -> StatisticsService:
+        return self._statistics_service
     
     def get_event_bus(self) -> EventBus: 
         return self._event_bus
