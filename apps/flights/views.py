@@ -20,3 +20,9 @@ class FlightsViewSet(viewsets.GenericViewSet):
         cheapest_request = interfaces.GetCheapestTicketRequest(**request.query_params.dict())
         results = service.get_cheapest_ticket(request=cheapest_request)
         return response.Response(results.model_dump())
+
+    def get_cheapest_favorite_city_date(self, request):
+        service = get_bootstrapper().get_flights_service()
+        cheapest_favorite_city_date_request = interfaces.GetCheapestFavoriteCityDateRequest(**request.query_params.dict())
+        results = service.get_cheapest_favorite_city_date(request=cheapest_favorite_city_date_request)
+        return response.Response(results.model_dump())
