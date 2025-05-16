@@ -112,7 +112,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             allowed_weights.add(flight.allowed_weight)
             seat_classes.add(flight.seat_class)
 
-            for website in flight.websites.all():
+            for website in flight.websites.filter(is_valid=True):
                 websites_uid.add(website.uid)
                 
                 if websites_min_price.get(website.uid) is None:
@@ -238,88 +238,107 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
     def _create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
         logger.info(f"Creating flight with request: {request}")
         
-        for flight_data in request.results:
-            flight, created = Flight.objects.get_or_create(
-                airline=flight_data.airline,
-                origin=request.origin,
-                destination=request.destination,
-                departure_timestamp=flight_data.departure_timestamp,
-                arrival_timestamp=flight_data.arrival_timestamp,
-                allowed_weight=flight_data.allowed_weight,
-                seat_class=flight_data.seat_class,
-                defaults={
-                    "uid": str(uuid4())
-                }
-            )
+        logger.info(f"\n\n\n number of tickets {len(request.results)}")
+        logger.info(f"rquest timestamp: {request.crawl_timestamp}\n\n\n")
 
-            website, created = Website.objects.get_or_create(
-                uid=flight_data.provider_uid,
-                flight=flight,
-                defaults={
-                    "base_redirect_url": flight_data.base_redirect_url,
-                    "one_adult_redirect_url": flight_data.one_adult_redirect_url,
-                    "two_adult_redirect_url": flight_data.two_adult_redirect_url,
-                    "adult_price": flight_data.adult_price,
-                    "child_price": flight_data.child_price,
-                    "infant_price": flight_data.infant_price,
-                    "remaining_seat": flight_data.remaining_seat,
-                    "last_crawled_uid": request.uid,
-                }
-            )
-            
-            if not created and website.last_crawled_uid == request.uid: 
-                if flight_data.one_adult_redirect_url is not None: 
-                    website.one_adult_redirect_url = flight_data.one_adult_redirect_url
-                if flight_data.two_adult_redirect_url is not None:
-                    website.two_adult_redirect_url = flight_data.two_adult_redirect_url
-                if flight_data.base_redirect_url is not None:
-                    website.base_redirect_url = flight_data.base_redirect_url
+        for flight_data in request.results:
+            try:
+                flight, created = Flight.objects.get_or_create(
+                    airline=flight_data.airline,
+                    origin=request.origin,
+                    destination=request.destination,
+                    departure_timestamp=flight_data.departure_timestamp,
+                    arrival_timestamp=flight_data.arrival_timestamp,
+                    allowed_weight=flight_data.allowed_weight,
+                    seat_class=flight_data.seat_class,
+                    defaults={
+                        "uid": str(uuid4())
+                    }
+                )
+
+                website, created = Website.objects.get_or_create(
+                    uid=flight_data.provider_uid,
+                    flight=flight,
+                    defaults={
+                        "base_redirect_url": flight_data.base_redirect_url,
+                        "one_adult_redirect_url": flight_data.one_adult_redirect_url,
+                        "two_adult_redirect_url": flight_data.two_adult_redirect_url,
+                        "adult_price": flight_data.adult_price,
+                        "child_price": flight_data.child_price,
+                        "infant_price": flight_data.infant_price,
+                        "remaining_seat": flight_data.remaining_seat,
+                        "last_crawled_uid": request.uid,
+                    }
+                )
                 
-                if flight_data.adult_price is not None:
+                if not created and website.last_crawled_uid == request.uid: 
+                    if flight_data.one_adult_redirect_url is not None: 
+                        website.one_adult_redirect_url = flight_data.one_adult_redirect_url
+                    if flight_data.two_adult_redirect_url is not None:
+                        website.two_adult_redirect_url = flight_data.two_adult_redirect_url
+                    if flight_data.base_redirect_url is not None:
+                        website.base_redirect_url = flight_data.base_redirect_url
+                    
+                    if flight_data.adult_price is not None:
+                        website.adult_price = flight_data.adult_price
+                    if flight_data.child_price is not None:
+                        website.child_price = flight_data.child_price
+                    if flight_data.infant_price is not None:
+                        website.infant_price = flight_data.infant_price
+                
+                elif not created and website.last_crawled_uid != request.uid:
+                    website.one_adult_redirect_url = flight_data.one_adult_redirect_url
+                    website.two_adult_redirect_url = flight_data.two_adult_redirect_url
+                    website.base_redirect_url = flight_data.base_redirect_url
                     website.adult_price = flight_data.adult_price
-                if flight_data.child_price is not None:
                     website.child_price = flight_data.child_price
-                if flight_data.infant_price is not None:
                     website.infant_price = flight_data.infant_price
-            
-            elif not created and website.last_crawled_uid != request.uid:
-                website.one_adult_redirect_url = flight_data.one_adult_redirect_url
-                website.two_adult_redirect_url = flight_data.two_adult_redirect_url
-                website.base_redirect_url = flight_data.base_redirect_url
-                website.adult_price = flight_data.adult_price
-                website.child_price = flight_data.child_price
-                website.infant_price = flight_data.infant_price
-                website.remaining_seat = flight_data.remaining_seat
-                website.is_valid = True
+                    website.remaining_seat = flight_data.remaining_seat
+                    website.is_valid = True
+                    website.last_crawled_uid = request.uid
+
+                remaining_seat = flight_data.remaining_seat if flight_data.remaining_seat is not None else 0
+                if remaining_seat > 0:
+                    website.remaining_seat = remaining_seat
+                    website.is_valid = True
+                else:
+                    website.is_valid = False
+                    
                 website.last_crawled_uid = request.uid
 
-            remaining_seat = flight_data.remaining_seat if flight_data.remaining_seat is not None else 0
-            if remaining_seat > 0:
-                website.remaining_seat = remaining_seat
-                website.is_valid = True
-            else:
-                website.is_valid = False
+                website.save()
+                    
+                logger.debug(f"\n\nwebsite: {website.__dict__}\n\n")
                 
-            website.last_crawled_uid = request.uid
+                logger.info(f"Created or updated flight with uid: {flight.uid}")
+            except Exception as e: 
+                logger.error(f"error in add flight to db: {e}")
+                continue
 
-            website.save()
-                
-            logger.debug(f"\n\nwebsite: {website.__dict__}\n\n")
-            
-            flight.update_cheapest_info()
-            logger.info(f"111 Created or updated flight with uid: {flight.uid}")
-        
 
         print(f"\n\nrequest.crawl_timestamp: {request.crawl_timestamp}\n\n")
         print(f"\n\nrequest.crawl_timestamp + SECOND_IN_A_DAY: {request.crawl_timestamp + SECOND_IN_A_DAY}\n\n")
 
-        Website.objects.filter(
-            ~Q(last_crawled_uid=request.uid),
+        affected_websites = Website.objects.filter(
             flight__origin=request.origin,
             flight__destination=request.destination,
             flight__departure_timestamp__gte=request.crawl_timestamp,
             flight__departure_timestamp__lt=request.crawl_timestamp + SECOND_IN_A_DAY
+        )
+
+        # Bulk update websites that weren't crawled in this request
+        Website.objects.filter(
+            id__in=affected_websites.exclude(last_crawled_uid=request.uid).values_list('id', flat=True)
         ).update(is_valid=False)
+
+        # Get all affected flights and update their cheapest info in bulk
+        affected_flights = Flight.objects.filter(
+            id__in=affected_websites.values_list('flight_id', flat=True).distinct()
+        ).prefetch_related('websites')
+
+        for flight in affected_flights:
+            flight.update_cheapest_info()
+
 
 
     def _convert_flight_to_dto(self, flight: Flight) -> interfaces.FlightDTO:
@@ -345,7 +364,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 name_fa=self.website_details[flight.cheapest_website_uid].name_fa,
                 logo=self.website_details[flight.cheapest_website_uid].logo
             ),
-            websites=[self._convert_website_to_dto(website) for website in flight.websites.all()],
+            websites=[self._convert_website_to_dto(website) for website in flight.websites.filter(is_valid=True)],
         )
 
     @staticmethod

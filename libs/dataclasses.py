@@ -7,7 +7,7 @@ from pydantic_core.core_schema import FieldValidationInfo
 
 class BaseFilter(BaseModel):
     order_by: str = '-id'
-    limit: Optional[int] = 20
+    limit: Optional[int] = 1000
     offset: Optional[int] = 0
 
     @field_validator('limit')
