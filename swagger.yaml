@@ -160,6 +160,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/CityList'
 
+  /flights/favorite-cities:
+    get:
+      summary: Get favorite cities flights
+      description: Retrieve cheapest flights to favorite cities from a given origin
+      parameters:
+        - name: favorite_cities
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+            description: List of favorite city codes (defaults to ["MHD", "TBZ", "SYZ", "IFN"])
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetFavoriteCitiesResponse'
+
 components:
   schemas:
     GetFlightsResponse:
@@ -352,4 +372,33 @@ components:
         name:
           type: string
         value:
-          type: string 
+          type: string
+
+    GetFavoriteCitiesResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Total number of favorite cities with flights
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CheapestFavoriteCityDTO'
+
+    CheapestFavoriteCityDTO:
+      type: object
+      properties:
+        origin:
+          type: string
+          description: Origin city code
+        destination:
+          type: string
+          description: Destination city code
+        date:
+          type: string
+          format: date
+          description: Date of the cheapest flight
+        price:
+          type: number
+          format: float
+          description: Price of the cheapest flight 
