@@ -22,20 +22,19 @@ class FlightsViewSet(viewsets.GenericViewSet):
         return response.Response(results.model_dump())
 
     def get_cheapest_favorite_city_date(self, request):
-        service = get_bootstrapper().get_flights_service()
+        service = get_bootstrapper().get_flights_service()   
+
+        # Get favorite_cities from query params and handle if it doesn't exist
+        favorite_cities = request.query_params.get('favorite_cities', '')
         
-        # Handle list query parameters
-        query_params = request.query_params.copy()
-        if 'favorite_cities' in query_params:
-            favorite_cities = []
-            favorite_cities.extend(query_params.get('favorite_cities', '').split(','))
-            
-            # Remove empty strings and strip whitespace
-            favorite_cities = [city.strip() for city in favorite_cities if city.strip()]
-            
-            query_params = query_params.copy()
-            query_params.setlist('favorite_cities', favorite_cities)
+        # Split the cities and clean up the list
+        favorite_cities_list = [city.strip() for city in favorite_cities.split(',') if city.strip()]
         
-        cheapest_favorite_city_date_request = interfaces.GetFavoriteCitiesRequest(**query_params.dict())
+        logger.debug(f"favorite_cities ==>> {favorite_cities_list}")
+        cheapest_favorite_city_date_request = interfaces.GetFavoriteCitiesRequest(
+            favorite_cities=favorite_cities_list
+        )
+        
+        logger.info(f"Request object ==>> {cheapest_favorite_city_date_request}")
         results = service.get_favorite_cities(request=cheapest_favorite_city_date_request)
         return response.Response(results.model_dump())
