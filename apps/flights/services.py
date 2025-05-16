@@ -112,7 +112,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             allowed_weights.add(flight.allowed_weight)
             seat_classes.add(flight.seat_class)
 
-            for website in flight.websites.all():
+            for website in flight.websites.filter(is_valid=True):
                 websites_uid.add(website.uid)
                 
                 if websites_min_price.get(website.uid) is None:
