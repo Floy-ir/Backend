@@ -16,7 +16,8 @@ def normalize_airline(airline_name):
         'شِ': 'ش',
         'سِ': 'س',
         'ى': 'ی',
-        'ي': 'ی'
+        'ي': 'ی',
+        'آ':‌ 'ا'
     }
     
     # First normalize the characters
