@@ -234,13 +234,12 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         )
         logger.info(f"result: {result}")
         return result
-    
 
     def get_favorite_cities(self, request: interfaces.GetFavoriteCitiesRequest) -> interfaces.GetFavoriteCitiesResponse:
         logger.info(f"request: {request}")
         
-        destinations = ["KIH", "MHD", "TBZ", "AWZ", "THR", "SYZ"]
-        origin = request.origin or "THR"
+        origin = request.favorite_cities or "THR"
+        destinations =  request.favorite_cities or ["MHD", "TBZ", "SYZ", "IFN"]
         
         # Get base timestamp for date filtering
         base_timestamp = self.date_time_utils.get_current_timestamp()
@@ -252,7 +251,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             cheapest_price__isnull=False,
             departure_timestamp__gte=base_timestamp,
             departure_timestamp__lt=base_timestamp + 5 * SECOND_IN_A_DAY
-        ).order_by('destination', 'cheapest_price')
+        ).order_by('origin', 'destination', 'cheapest_price')
         
         # Group flights by destination and get cheapest for each
         results: List[interfaces.CheapestFavoriteCityDTO] = []
