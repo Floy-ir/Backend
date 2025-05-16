@@ -337,58 +337,71 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
         is_continued = True
         while is_continued:
-            try:
-                if search_id_request_structure[METHOD] == GET_METHOD:
-                    if search_id_request_structure[WAY] == PARAMS:
-                        search_id_request_params = {
-                            "search_id": search_id
-                        }
-                        search_id_request_params = self._format_inputs(search_id_request_structure, search_id_request_params)
+            if search_id_request_structure[METHOD] == GET_METHOD:
+                if search_id_request_structure[WAY] == PARAMS:
+                    logger.info(f"Making GET request to {search_id_request_structure[API_URL]}")
+                    logger.info(f"Headers: {search_id_request_structure[HEADERS]}")
 
-                        response = make_request_with_retry(
-                            url=search_id_request_structure[API_URL],
-                            headers=base_headers,
-                            params=search_id_request_params
-                        )
-                    else:
-                        response = make_request_with_retry(
-                            url=search_id_request_structure[API_URL] + '/' + search_id,
-                            headers=base_headers
-                        )
-                else:
-                    search_id_body = {
+                    search_id_request_params = {
                         "search_id": search_id
                     }
-                    search_id_body = self._format_inputs(search_id_request_structure, search_id_body)
+                    search_id_request_params = self._format_inputs(search_id_request_structure, search_id_request_params)
 
-                    response = make_request_with_retry(
+                    logger.info(f"Params: {search_id_request_params}")
+
+                    response = self.http_requester.get(
                         url=search_id_request_structure[API_URL],
                         headers=base_headers,
-                        json=search_id_body
+                        params=search_id_request_params,
                     )
 
-                response_data = response.content_json
-                logger.debug(f"\n\n 370 line response_data: {response_data}\n\n\n")
-                all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
-                
-                # Check if is_finished_field exists before using it
-                if IS_FINISHED_FIELD in request_structure:
-                    is_continued = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
-                    print(f"\n\n\nis_continued: {is_continued}\n\n\n")
-                    if is_continued is None:
-                        is_continued = False
-                    else:
-                        is_continued = not(is_continued)
                 else:
-                    is_continued = False
+                    logger.info(f"Making GET request to {request_structure[API_URL]}/{search_id}")
+                    logger.info(f"Headers: {request_structure[HEADERS]}")
                     
-                if is_continued:
-                    all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
-                    time.sleep(3)
+                    response = self.http_requester.get(
+                        url=search_id_request_structure[API_URL] + '/' + search_id,
+                        headers=base_headers,
+                    )
+            else:
+                logger.info(f"Making POST request to {search_id_request_structure[API_URL]}")
+                logger.info(f"Headers: {search_id_request_structure[HEADERS]}")
+                logger.info(f"search id: {search_id}")
 
-            except Exception as e:
-                logger.error(f"Error in search_id request: {str(e)}")
+                search_id_body = {
+                    "search_id": search_id
+                }
+                search_id_body = self._format_inputs(search_id_request_structure, search_id_body)
+
+                logger.debug(f"\n\n\nsearch_id_body: {search_id_body}\n\n\n")
+
+                response = self.http_requester.post(
+                    url=search_id_request_structure[API_URL],
+                    headers=base_headers,
+                    json=search_id_body
+                )
+
+            if response.status_code != 200:
                 raise interfaces.UnsuccessfulRequest()
+
+            response_data = response.content_json
+            logger.debug(f"\n\n 370 line response_data: {response_data}\n\n\n")
+            all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
+            
+            # Check if is_finished_field exists before using it
+            if IS_FINISHED_FIELD in request_structure:
+                is_continued = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
+                print(f"\n\n\nis_continued: {is_continued}\n\n\n")
+                if is_continued is None:
+                    is_continued = False
+                else:
+                    is_continued = not(is_continued)
+            else:
+                is_continued = False
+                
+            if is_continued:
+                all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
+                time.sleep(3)
 
         result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
         logger.info(f"result: {result}")
