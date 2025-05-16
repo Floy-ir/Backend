@@ -6,7 +6,7 @@ from .. import interfaces as interfaces
 class IncreaseProviderTests(TestCase):
     def setUp(self) -> None:
         self.bootstrapper = Bootstrapper()
-        self.service = self.bootstrapper.get_statistic_service()
+        self.service = self.bootstrapper.get_statistics_service()
 
     def test_happy1(self):
         for i in range(0,10):

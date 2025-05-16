@@ -1,8 +1,11 @@
 from uuid import uuid4
+from apps.accounts import interfaces as accounts_interfaces
 from .models import Statistic
 from . import interfaces
 
 class StatisticsService(interfaces.AbstractStatisticsService):
+    def __init__(self, claim: accounts_interfaces.Session):
+        self.claim = claim
     
     def increase_redirect(self, request: interfaces.IncreaseRedirectNumberRequest):
         statistic,is_create = Statistic.objects.get_or_create(provider=request.provider,defaults={
