@@ -6,6 +6,7 @@ from . import interfaces
 from apps.accounts import interfaces as accounts_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from apps.file_storage import interfaces as file_storage_interfaces
+from libs.normalizer import normalize_airline
 
 logger = logging.getLogger(__name__)
 
@@ -102,13 +103,14 @@ class AirlineService(interfaces.AbstractAirlineService):
     def get_airline_by_name(self, name: str) -> interfaces.AirlineDTO:
         logger.debug(f"Searching for airline with name containing: '{name}'")
 
-        airline = Airline.objects.filter(name__icontains=name).first()
+        normalized_name = normalize_airline(name)
+        airline = Airline.objects.filter(name=normalized_name).first()
 
         if not airline:
-            logger.info(f"Airline with name '{name}' not found. Creating new airline.")
+            logger.info(f"Airline with name '{normalized_name}' not found. Creating new airline.")
             airline = Airline.objects.create(
                 uid=str(uuid4()),
-                name=name
+                name=normalized_name
             )
             logger.info(f"Created new airline: {airline}")
 
@@ -120,14 +122,14 @@ class AirlineService(interfaces.AbstractAirlineService):
     def _convert_airline_to_dataclass(airline: Airline) -> interfaces.AirlineDTO:
         return interfaces.AirlineDTO(
             uid=airline.uid,
-            name=airline.name,
+            name=normalize_airline(airline.name),
             image=airline.image
         )
 
     @staticmethod
     def _convert_dict_to_airline(airline: dict) -> interfaces.AirlineDTO:
         return interfaces.AirlineDTO(
-            name=airline['name'],
+            name=normalize_airline(airline['name']),
             image=airline['image'],
             uid=airline['uid']
         )
