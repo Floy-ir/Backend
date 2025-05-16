@@ -131,3 +131,17 @@ class GetCheapestResponse(dataclasses.BaseModel):
     count: int
     results: List[CheapestFlightDTO]
 
+
+class GetFavoriteCitiesRequest(dataclasses.BaseModel):
+    origin: str | None = None
+
+
+class CheapestFavoriteCityDTO(dataclasses.BaseModel):
+    origin: str
+    destination: str
+    date: dataclasses.DateField
+    price: float
+
+class GetFavoriteCitiesResponse(dataclasses.BaseModel):
+    count: int
+    results:  List[CheapestFavoriteCityDTO]
