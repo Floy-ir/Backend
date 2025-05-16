@@ -239,45 +239,59 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         if HEADERS in request_structure:
             base_headers.update(request_structure[HEADERS])
 
+        def make_request_with_retry(url, headers, params=None, json=None, max_retries=3, retry_delay=3):
+            retry_count = 0
+            last_error = None
+
+            while retry_count < max_retries:
+                try:
+                    if method == GET_METHOD:
+                        logger.info(f"Making GET request to {url} (Attempt {retry_count + 1}/{max_retries})")
+                        response = self.http_requester.get(
+                            url=url,
+                            headers=headers,
+                            params=params
+                        )
+                    else:  # POST method
+                        logger.info(f"Making POST request to {url} (Attempt {retry_count + 1}/{max_retries})")
+                        if request_structure.get("way") == "params":
+                            response = self.http_requester.post(
+                                url=url,
+                                headers=headers,
+                                params=params
+                            )
+                        else:
+                            response = self.http_requester.post(
+                                url=url,
+                                headers=headers,
+                                json=json
+                            )
+
+                    if response.status_code == 200:
+                        return response
+                    else:
+                        logger.warning(f"Request failed with status code {response.status_code} (Attempt {retry_count + 1}/{max_retries})")
+                        last_error = interfaces.UnsuccessfulRequest()
+
+                except Exception as e:
+                    logger.error(f"Request failed with error: {str(e)} (Attempt {retry_count + 1}/{max_retries})")
+                    last_error = e
+
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Waiting {retry_delay} seconds before retry...")
+                    time.sleep(retry_delay)
+
+            raise last_error or interfaces.UnsuccessfulRequest()
+
         while is_continued:
             try:
-                if method == GET_METHOD:
-                    logger.info(f"Making GET request to {request_structure[API_URL]}")
-                    logger.info(f"Headers: {base_headers}")
-                    logger.info(f"Params: {formatted_params}")
-
-                    response = self.http_requester.get(
-                        url=request_structure[API_URL], 
-                        headers=base_headers,
-                        params=formatted_params
-                    )
-                elif method == POST_METHOD:
-                    logger.info(f"Making POST request to {request_structure[API_URL]}")
-                    logger.info(f"Headers: {base_headers}")
-                    logger.info(f"Body: {formatted_params}")
-
-                    # Check if we should send as params or json
-                    if request_structure.get("way") == "params":
-                        response = self.http_requester.post(
-                            url=request_structure[API_URL], 
-                            headers=base_headers,
-                            params=formatted_params
-                        )
-                    else:  # Default to json
-                        response = self.http_requester.post(
-                            url=request_structure[API_URL], 
-                            headers=base_headers,
-                            json=formatted_params
-                        )
-                else:
-                    logger.warning(f"Unsupported request type for source {source.name}")
-                    raise interfaces.UnsupportedRequestType()
-
-                if response.status_code != 200:
-                    logger.debug(f"response: {response}")
-                    logger.error(f"HTTP request failed with status code {response.status_code}")
-                    # logger.error(f"Response content: {response.content}")
-                    raise interfaces.UnsuccessfulRequest()
+                response = make_request_with_retry(
+                    url=request_structure[API_URL],
+                    headers=base_headers,
+                    params=formatted_params if method == GET_METHOD else None,
+                    json=formatted_params if method == POST_METHOD else None
+                )
 
                 response_data = response.content_json
                 logger.info(f"Response data: {response_data}")
@@ -571,48 +585,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 parsed_dict["provider_uid"] = str(source.website.uid)
 
                 parsed_dict["base_redirect_url"] = base_redirect_url
-
-                # if not source.website.redirect_url_config: 
-                #     redirect_url_departure_date = parsed_dict["departure_timestamp"]
-
-                # if source.website.redirect_url_config:
-                #     redirect_date_fields = source.website.redirect_url_config.get(DATE_FIELDS, {})
-                #     if redirect_date_fields.get(IS_JALALI, False):
-                #         redirect_url_departure_date = self.date_time.convert_timestamp_to_jalali_date(
-                #             timestamp=parsed_dict["departure_timestamp"],
-                #             separator=redirect_date_fields.get(SEPARATOR, "-")
-                #         )
-                #     else:
-                #         redirect_url_departure_date = self.date_time.convert_timestamp_to_date(
-                #             timestamp=parsed_dict["departure_timestamp"],
-                #             date_format=redirect_date_fields.get('date_format', "%Y-%m-%d")
-                #         )
-
-           
-                # flight_id = self._extract_nested_value(raw_flight, parser.get("flight_id_path", "id"))
-                # city_mapping = source.website.redirect_url_config.get(CITY_MAPPING, {})
-                # origin_code = city_mapping.get(request.origin, request.origin)
-                # dest_code = city_mapping.get(request.destination, request.destination)
-
-                # url_params = {
-                #     "flight_id": flight_id,
-                #     "origin": origin_code,
-                #     "destination": dest_code,
-                #     "departure_date": redirect_url_departure_date,
-                # }
-                
-                # parsed_dict["base_redirect_url"] = source.website.redirect_url_template.format(**url_params)
-                # if request.adult == 1: 
-                #     if source.website.one_adult_url_template:
-                #         parsed_dict["one_adult_redirect_url"] = source.website.one_adult_url_template.format(**url_params)
-                #     else:
-                #         parsed_dict["one_adult_redirect_url"] = None 
-
-                # elif request.adult == 2: 
-                #     if source.website.two_adult_url_template:
-                #         parsed_dict["two_adult_redirect_url"] = source.website.two_adult_url_template.format(**url_params)
-                #     else:
-                #         parsed_dict["two_adult_redirect_url"] = None 
                 
                 logger.debug(f"parsed_dict: {parsed_dict}")
                 try:
