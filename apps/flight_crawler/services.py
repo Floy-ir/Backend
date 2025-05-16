@@ -141,8 +141,12 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 is_supported=True
             )
 
-            for website in websites_route: 
-                flights.extend(self._fetch_flights(source=website, search_params=request))
+            for website in websites_route:
+                try:
+                    flights.extend(self._fetch_flights(source=website, search_params=request))
+                except Exception as e:
+                    logger.error(f"Error in _crawl: {e}")
+                    continue
                 
             return flights
         except Exception as e: 
