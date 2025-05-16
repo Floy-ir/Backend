@@ -51,9 +51,9 @@ class Flight(models.Model):
         default=ECONOMY_CLASS,
     )
     cheapest_price = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
-    cheapest_base_redirect_url = models.CharField(max_length=256, null=True, blank=True)
-    cheapest_one_adult_redirect_url = models.CharField(max_length=256, null=True, blank=True)
-    cheapest_two_adult_redirect_url = models.CharField(max_length=256, null=True, blank=True)
+    cheapest_base_redirect_url = models.CharField(max_length=1024, null=True, blank=True)
+    cheapest_one_adult_redirect_url = models.CharField(max_length=1024, null=True, blank=True)
+    cheapest_two_adult_redirect_url = models.CharField(max_length=1024, null=True, blank=True)
     cheapest_website_uid = models.CharField(max_length=128, null=True, blank=True)
 
     def __str__(self):
