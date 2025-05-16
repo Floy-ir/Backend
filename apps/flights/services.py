@@ -103,10 +103,12 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         airlines_uid = set()
         allowed_weights = set()
         seat_classes = set()
-        max_price = float('-inf')
-        min_price = float('inf')
+        total_max_price = float('-inf')
+        total_min_price = flights_qs[0].cheapest_price
         airlines_min_price = {}
         websites_min_price = {}
+
+        logger.debug(f"flight_qa[0].cheapest_price: ", flights_qs[0].cheapest_price)
 
         for flight in flights_qs:
             allowed_weights.add(flight.allowed_weight)
@@ -118,8 +120,8 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 if websites_min_price.get(website.uid) is None:
                     websites_min_price[website.uid] = float('inf')
 
-                min_price = min(min_price, website.adult_price)
-                max_price = max(max_price, website.adult_price)
+                # min_price = min(min_price, website.adult_price)
+                total_max_price = max(total_max_price, website.adult_price)
                 websites_min_price[website.uid] = min(websites_min_price[website.uid], website.adult_price)
 
             airlines_uid.add(flight.airline)
@@ -169,8 +171,8 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         result = interfaces.GetFlightsResponse(
             count=flights_qs.count(),
             filters=interfaces.GetFlightsFilters(
-                min_price=min_price,
-                max_price=max_price,
+                min_price=total_min_price,
+                max_price=total_max_price,
                 allowed_weights=list(allowed_weights),
                 seat_classes=list(seat_classes),
                 airlines=airlines_filters,
