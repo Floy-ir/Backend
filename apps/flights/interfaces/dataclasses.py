@@ -133,7 +133,7 @@ class GetCheapestResponse(dataclasses.BaseModel):
 
 
 class GetFavoriteCitiesRequest(dataclasses.BaseModel):
-    origin: str | None = None
+    favorite_cities: List[str] | None = None
 
 
 class CheapestFavoriteCityDTO(dataclasses.BaseModel):
