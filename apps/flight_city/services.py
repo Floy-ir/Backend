@@ -22,10 +22,13 @@ class FlightCityService(interfaces.AbstractFlightCityService):
 
     def add_destination(self, request: interfaces.AddDestinationRequest):
         src_obj = City.objects.get(value=request.src_value)
-        City.objects.filter(origin=src_obj).update(origin_city=None)
-        new_dest_cities = City.objects.filter(value__in=request.dest_value_list)
-        new_dest_cities.update(origin_city=src_obj)
 
+        # Clear current destinations (remove all destinations for this origin)
+        src_obj.destinations.clear()
+
+        # Add new destinations
+        new_dest_cities = City.objects.filter(value__in=request.dest_value_list)
+        src_obj.destinations.add(*new_dest_cities)
 
     def get_cities(self, request: interfaces.GetCitiesRequest) -> interfaces.CityList:
         cities = City.objects.prefetch_related('destinations')
