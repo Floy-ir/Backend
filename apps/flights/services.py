@@ -238,63 +238,69 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
     def get_favorite_cities(self, request: interfaces.GetFavoriteCitiesRequest) -> interfaces.GetFavoriteCitiesResponse:
         logger.info(f"request: {request}")
         
-        origin = request.favorite_cities or "THR"
-        destinations =  request.favorite_cities or ["MHD", "TBZ", "SYZ", "IFN"]
+        # Use provided favorite cities or default list
+        favorite_cities = request.favorite_cities or ["MHD", "TBZ", "SYZ", "IFN"]
+        
+        logger.info(f"Searching flights between favorite cities: {favorite_cities}")
         
         # Get base timestamp for date filtering
         base_timestamp = self.date_time_utils.get_current_timestamp()
         
         # Get all flights in a single query
         flights = Flight.objects.filter(
-            origin=origin,
-            destination__in=destinations,
+            origin__in=favorite_cities,
+            destination__in=favorite_cities,
             cheapest_price__isnull=False,
             departure_timestamp__gte=base_timestamp,
-            departure_timestamp__lt=base_timestamp + 5 * SECOND_IN_A_DAY
+            departure_timestamp__lt=base_timestamp + 7 * SECOND_IN_A_DAY
         ).order_by('origin', 'destination', 'cheapest_price')
         
-        # Group flights by destination and get cheapest for each
+        logger.info(f"Found {flights.count()} flights matching criteria")
+        
+        # Group flights by origin-destination pair and get cheapest for each
         results: List[interfaces.CheapestFavoriteCityDTO] = []
-        current_dest = None
+        current_origin_dest = None
         cheapest_flight = None
         
         for flight in flights:
-            if flight.destination != current_dest:
+            current_pair = (flight.origin, flight.destination)
+            
+            if current_pair != current_origin_dest:
                 if cheapest_flight:
                     date = self.date_time_utils.convert_timestamp_to_date(
                         cheapest_flight.departure_timestamp, 
                         '%Y-%m-%d'
                     )
                     results.append(interfaces.CheapestFavoriteCityDTO(
-                        origin=origin,
-                        destination=current_dest,
+                        origin=cheapest_flight.origin,
+                        destination=cheapest_flight.destination,
                         date=date,
                         price=cheapest_flight.cheapest_price
                     ))
                     
-                current_dest = flight.destination
+                current_origin_dest = current_pair
                 cheapest_flight = flight
             elif flight.cheapest_price < cheapest_flight.cheapest_price:
                 cheapest_flight = flight
         
-        # Add the last destination
+        # Add the last origin-destination pair
         if cheapest_flight:
             date = self.date_time_utils.convert_timestamp_to_date(
                 cheapest_flight.departure_timestamp, 
                 '%Y-%m-%d'
             )
             results.append(interfaces.CheapestFavoriteCityDTO(
-                origin=origin,
-                destination=current_dest,
+                origin=cheapest_flight.origin,
+                destination=cheapest_flight.destination,
                 date=date,
                 price=cheapest_flight.cheapest_price
             ))
         
+        logger.info(f"Returning {len(results)} cheapest flights")
         return interfaces.GetFavoriteCitiesResponse(
             count=len(results),
             results=results
         )
-
 
     def _create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
         logger.info(f"Creating flight with request: {request}")
