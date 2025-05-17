@@ -344,19 +344,19 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 )
                 
                 if not created and website.last_crawled_uid == request.uid: 
-                    if flight_data.one_adult_redirect_url is not None: 
-                        website.one_adult_redirect_url = flight_data.one_adult_redirect_url
-                    if flight_data.two_adult_redirect_url is not None:
-                        website.two_adult_redirect_url = flight_data.two_adult_redirect_url
-                    if flight_data.base_redirect_url is not None:
-                        website.base_redirect_url = flight_data.base_redirect_url
-                    
-                    if flight_data.adult_price is not None:
-                        website.adult_price = flight_data.adult_price
-                    if flight_data.child_price is not None:
-                        website.child_price = flight_data.child_price
-                    if flight_data.infant_price is not None:
-                        website.infant_price = flight_data.infant_price
+                    Website.objects.create(
+                        uid=flight_data.provider_uid,
+                        flight=flight,
+                        adult_price=flight_data.adult_price,
+                        child_price=flight_data.child_price,
+                        infant_price=flight_data.infant_price,
+                        base_redirect_url=flight_data.base_redirect_url,
+                        one_adult_redirect_url=flight_data.one_adult_redirect_url,
+                        two_adult_redirect_url=flight_data.two_adult_redirect_url,
+                        remaining_seat=flight_data.remaining_seat,
+                        is_valid=True,
+                        last_crawled_uid=request.uid,
+                    )
                 
                 elif not created and website.last_crawled_uid != request.uid:
                     website.one_adult_redirect_url = flight_data.one_adult_redirect_url
