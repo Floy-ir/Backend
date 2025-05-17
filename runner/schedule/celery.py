@@ -20,11 +20,9 @@ app.conf.beat_schedule = {
     'crawl_three_days_ahead': {
         'task': 'runner.schedule.tasks.crawl_three_days_ahead',
         'schedule': crontab(minute='*/5'),  # Every 5 minutes
-        'kwargs': {'priority_cities': True}
     },
     'crawl_four_and_more_days_ahead': {
         'task': 'runner.schedule.tasks.crawl_four_and_more_days_ahead',
-        'schedule': crontab(minute='*/10'),  # Every 15 minutes
-        'kwargs': {'priority_cities': False}
+        'schedule': crontab(minute='*/10'),  # Every 10 minutes
     },
 }
