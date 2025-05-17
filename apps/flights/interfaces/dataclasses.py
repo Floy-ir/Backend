@@ -86,7 +86,7 @@ class FlightWithoutWebsiteDTO(dataclasses.BaseModel):
 class AirlineFilters(dataclasses.BaseModel):
     uid: dataclasses.UUIDField
     name: str
-    logo: dataclasses.URLField | None = None
+    image: dataclasses.URLField | None = None
     min_price: float
 
 
@@ -94,7 +94,7 @@ class WebsiteFilters(dataclasses.BaseModel):
     uid: dataclasses.UUIDField
     name: str
     name_fa: str
-    logo: dataclasses.URLField | None = None
+    image: dataclasses.URLField | None = None
     min_price: float
 
 
