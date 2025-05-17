@@ -22,5 +22,7 @@ urlpatterns = [
     path(r'ht/', include('health_check.urls')),
     path('flight-city/', include('apps.flight_city.urls')),
     path('flights/', include('apps.flights.urls')),
+    path('airlines/', include('apps.airlines.urls')),
+    path('websites/', include('apps.flight_crawler.urls')),
     path('statistics/', include('apps.statistics.urls')),
 ]
