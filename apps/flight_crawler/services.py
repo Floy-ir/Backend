@@ -619,11 +619,15 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
     @staticmethod
     def _convert_website_to_dataclass(website: Website) -> interfaces.WebsiteDTO:
+        logo_url = website.logo
+        if logo_url and logo_url.startswith('http://minio:9000'):
+            logo_url = logo_url.replace('http://minio:9000', 'http://localhost:9000')
+
         return interfaces.WebsiteDTO(
             uid=website.uid,
             name=website.name,
             name_fa=website.name_fa,
-            logo=website.logo,
+            logo=logo_url
         )
 
     @staticmethod

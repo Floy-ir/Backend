@@ -40,6 +40,11 @@ class FileStorageService(interfaces.AbstractFileStorageService):
             self._delete_existing_files(upload_metadata, request)
             file_metadata_list, file_links = self._upload_files_to_minio(request, upload_metadata)
 
+            # Replace minio URLs with localhost URLs
+            for i, link in enumerate(file_links):
+                if link and link.startswith('http://minio:9000'):
+                    file_links[i] = link.replace('http://minio:9000', 'http://localhost:9000')
+
             FileMetadata.objects.bulk_create(file_metadata_list)
             if not created:
                 upload_metadata.uploaded_at = self.date_time_utils.get_current_timestamp()
@@ -48,7 +53,8 @@ class FileStorageService(interfaces.AbstractFileStorageService):
         except Exception as e:
             logger.error(f'Error during file upload: {e}')
             raise interfaces.InternalFileStorageNotAvailable()
-
+        
+        logger.debug(f"\n\n\nfile_links after upload ==>>>> {file_links}")
         return interfaces.ImagesLink(count=len(file_links), results=file_links)
 
     def _get_or_create_upload_metadata(self, request: interfaces.UploadRequest) -> (UploadMetadata, bool):
@@ -81,9 +87,11 @@ class FileStorageService(interfaces.AbstractFileStorageService):
                 object_name=f"{request.uid}/{file.name}",
                 data=io.BytesIO(file.buffer),
                 length=len(file.buffer),
+                content_type='image/png' if file.name.endswith('.png') else 'image/jpeg'
             )
 
-            presigned_url = self.minio_client.get_presigned_url(
+            # Get the public URL (no expiration)
+            public_url = self.minio_client.get_presigned_url(
                 method='GET',
                 bucket_name=self.minio_bucket_name,
                 object_name=f"{request.uid}/{file.name}"
@@ -95,10 +103,10 @@ class FileStorageService(interfaces.AbstractFileStorageService):
                     file_name=file.name,
                     file_size_in_bytes=len(file.buffer),
                     upload_metadata=upload_metadata,
-                    file_link=presigned_url,
+                    file_link=public_url,
                 )
             )
-            file_links.append(presigned_url)
+            file_links.append(public_url)
 
         return file_metadata_list, file_links
 
@@ -110,9 +118,16 @@ class FileStorageService(interfaces.AbstractFileStorageService):
             return interfaces.ImagesLink(count=0, results=[])
 
         try:
-            file_links = [file.file_link for file in upload_metadata.files.all()]
+            file_links = []
+            for file in upload_metadata.files.all():
+                link = file.file_link
+                if link and link.startswith('http://minio:9000'):
+                    link = link.replace('http://minio:9000', 'http://localhost:9000')
+                file_links.append(link)
+            
+            logger.debug(f"\n\n\nfile_links ==>>>> {file_links}")
+            
+            return interfaces.ImagesLink(count=len(file_links), results=file_links)
         except Exception as e:
             logger.error(f'Error fetching file links: {e}')
             raise interfaces.InternalFileStorageNotAvailable()
-
-        return interfaces.ImagesLink(count=len(file_links), results=file_links)

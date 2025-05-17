@@ -41,6 +41,8 @@ class Bootstrapper:
         _minio_access_key = os.getenv('MINIO_ROOT_USER', 'minio_access_key')
         _minio_secret_key = os.getenv('MINIO_ROOT_PASSWORD', 'minio_secret_key')
         _minio_bucket_name = os.getenv('MINIO_BUCKET_NAME', 'floy-bucket')
+        _minio_secure = os.getenv('MINIO_SECURE', 'false').lower() == 'true'
+        _minio_public_url = os.getenv('MINIO_PUBLIC_URL', f'http://{_minio_hostname}:{_minio_port}')
 
         # redis
         _REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
@@ -55,7 +57,9 @@ class Bootstrapper:
             hostname=f"{_minio_hostname}:{_minio_port}",
             access_key=_minio_access_key,
             secret_key=_minio_secret_key,
-            bucket_name=_minio_bucket_name
+            bucket_name=_minio_bucket_name,
+            secure=_minio_secure,
+            public_url=_minio_public_url
         ))
 
         _http_requester = kwargs.get('http_requester', RequestsHTTPRequester())
