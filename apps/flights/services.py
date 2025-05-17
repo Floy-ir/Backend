@@ -150,7 +150,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                     uid=airline_uid,
                     min_price=min_price,
                     name=self.airline_details[airline_uid].name,
-                    logo=self.airline_details[airline_uid].image,
+                    image=self.airline_details[airline_uid].image,
                 )
             )
 
@@ -162,7 +162,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                     uid=website_uid,
                     name=self.website_details[website_uid].name,
                     name_fa=self.website_details[website_uid].name_fa,
-                    logo=self.website_details[website_uid].logo,
+                    image=self.website_details[website_uid].logo,
                     min_price=min_price,
                 )
             )
@@ -418,7 +418,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             airline=interfaces.AirlineDetail(
                 uid=flight.airline,
                 name=self.airline_details[flight.airline].name,
-                logo=self.airline_details[flight.airline].image
+                image=self.airline_details[flight.airline].image
             ),
             origin=flight.origin,
             destination=flight.destination,
@@ -434,7 +434,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 uid=flight.cheapest_website_uid,
                 name=self.website_details[flight.cheapest_website_uid].name,
                 name_fa=self.website_details[flight.cheapest_website_uid].name_fa,
-                logo=self.website_details[flight.cheapest_website_uid].logo
+                image=self.website_details[flight.cheapest_website_uid].logo
             ),
             websites=[self._convert_website_to_dto(website) for website in flight.websites.filter(is_valid=True)],
         )
@@ -475,7 +475,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 uid=website.uid,
                 name=self.website_details[website.uid].name,
                 name_fa=self.website_details[website.uid].name_fa,
-                logo=self.website_details[website.uid].logo,
+                image=self.website_details[website.uid].logo,
             ),
             adult_price=website.adult_price,
             child_price=website.child_price,
