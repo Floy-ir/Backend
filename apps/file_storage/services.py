@@ -17,11 +17,13 @@ class FileStorageService(interfaces.AbstractFileStorageService):
             date_time_utils: date_time_interfaces.AbstractDateTime,
             s3_client_factory: s3_interfaces.AbstractS3ClientFactory,
             minio_bucket_name: str,
+            minio_public_url: str
     ) -> None:
         self.claim = claim
         self.date_time_utils = date_time_utils
         self.s3_client_factory = s3_client_factory
         self.minio_bucket_name = minio_bucket_name
+        self.public_url = minio_public_url
         self.minio_client = self.s3_client_factory.get_s3_client()
 
     def upload_files(
@@ -43,7 +45,7 @@ class FileStorageService(interfaces.AbstractFileStorageService):
             # Replace minio URLs with localhost URLs
             for i, link in enumerate(file_links):
                 if link and link.startswith('http://minio:9000'):
-                    file_links[i] = link.replace('http://minio:9000', 'http://localhost:9000')
+                    file_links[i] = link.replace('http://minio:9000', self.public_url)
 
             FileMetadata.objects.bulk_create(file_metadata_list)
             if not created:
@@ -122,7 +124,7 @@ class FileStorageService(interfaces.AbstractFileStorageService):
             for file in upload_metadata.files.all():
                 link = file.file_link
                 if link and link.startswith('http://minio:9000'):
-                    link = link.replace('http://minio:9000', 'http://localhost:9000')
+                    link = link.replace('http://minio:9000', self.public_url)
                 file_links.append(link)
             
             logger.debug(f"\n\n\nfile_links ==>>>> {file_links}")

@@ -82,6 +82,7 @@ class Bootstrapper:
                 date_time_utils=_date_time_utils,
                 minio_bucket_name=_minio_bucket_name,
                 s3_client_factory=_s3_client_factory,
+                minio_public_url=_minio_public_url
             ))
 
         self._flight_city_service = kwargs.get(
