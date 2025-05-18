@@ -42,13 +42,12 @@ class EventCommandTestCase(TestCase):
                             seat_class='Economy',
                             allowed_weight=20,
                             adult_price=1000,
-                            child_price=None,
-                            infant_price=None,
-                            airplane_name=None,
+                            child_price=500.0, 
+                            infant_price=200.0, 
                             remaining_seat=3,
                             provider_uid=self.alibaba,
                             one_adult_redirect_url="alibaba.ir/one_adult_redirect_url",
-                            two_adult_redirect_url=None,
+                            two_adult_redirect_url="alibaba.ir/two_adult_redirect_url",
                             base_redirect_url="alibaba.ir"
                         ),
                         flight_crawler_interfaces.Flight(
@@ -58,13 +57,12 @@ class EventCommandTestCase(TestCase):
                             arrival_timestamp=24,
                             seat_class='Economy',
                             allowed_weight=20,
-                            adult_price=1000,
-                            child_price=500,
-                            infant_price=200,
-                            airplane_name=None,
+                            adult_price=1200,
+                            child_price=500.0, 
+                            infant_price=200.0, 
                             remaining_seat=3,
                             provider_uid=self.alibaba,
-                            one_adult_redirect_url=None,
+                            one_adult_redirect_url="alibaba.ir/one_adult_redirect_url",
                             two_adult_redirect_url="alibaba.ir/two_adult_redirect_url",
                             base_redirect_url="alibaba.ir"
                         ),
@@ -209,6 +207,21 @@ class EventCommandTestCase(TestCase):
                 ), 
                 interfaces.WebsiteDTO(
                     detail=interfaces.WebsiteDetail(
+                        uid='alibaba', 
+                        name='Website alibaba', 
+                        name_fa='Website alibaba', 
+                        image=None
+                    ), 
+                    adult_price=1200.0, 
+                    child_price=500.0, 
+                    infant_price=200.0, 
+                    base_redirect_url='alibaba.ir', 
+                    one_adult_redirect_url='alibaba.ir/one_adult_redirect_url', 
+                    two_adult_redirect_url="alibaba.ir/two_adult_redirect_url", 
+                    remaining_seat=3
+                ), 
+                interfaces.WebsiteDTO(
+                    detail=interfaces.WebsiteDetail(
                         uid='flightio', 
                         name='Website flightio', 
                         name_fa='Website flightio', 
@@ -225,6 +238,7 @@ class EventCommandTestCase(TestCase):
             ]
         )
 
+        print(f"\n\n\n{results.results[0]}\n\n")
         self.assertEqual(results.results[0], result1)
 
         result2 = interfaces.FlightDTO(
@@ -613,6 +627,8 @@ class EventCommandTestCase(TestCase):
                 ),
             ]
         )
+
+        print(f"\n\n\nresults.results[0] ===>>> {results.results[0]}\n\n")
         
         self.assertEqual(results.results[0], result1)
 
@@ -655,6 +671,21 @@ class EventCommandTestCase(TestCase):
                         image=None
                     ), 
                     adult_price=1000.0, 
+                    child_price=500.0, 
+                    infant_price=200.0, 
+                    base_redirect_url='alibaba.ir', 
+                    one_adult_redirect_url='alibaba.ir/one_adult_redirect_url', 
+                    two_adult_redirect_url="alibaba.ir/two_adult_redirect_url", 
+                    remaining_seat=3
+                ), 
+                interfaces.WebsiteDTO(
+                    detail=interfaces.WebsiteDetail(
+                        uid='alibaba', 
+                        name='Website alibaba', 
+                        name_fa='Website alibaba', 
+                        image=None
+                    ), 
+                    adult_price=1200.0, 
                     child_price=500.0, 
                     infant_price=200.0, 
                     base_redirect_url='alibaba.ir', 

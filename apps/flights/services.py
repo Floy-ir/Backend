@@ -108,8 +108,6 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         airlines_min_price = {}
         websites_min_price = {}
 
-        logger.debug(f"flight_qa[0].cheapest_price: ", flights_qs[0].cheapest_price)
-
         for flight in flights_qs:
             allowed_weights.add(flight.allowed_weight)
             seat_classes.add(flight.seat_class)
@@ -331,54 +329,39 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 website, created = Website.objects.get_or_create(
                     uid=flight_data.provider_uid,
                     flight=flight,
+                    is_valid=True,
+                    adult_price=flight_data.adult_price,
+                    child_price=flight_data.child_price,
+                    infant_price=flight_data.infant_price,
+                    last_crawled_uid=request.uid,
                     defaults={
                         "base_redirect_url": flight_data.base_redirect_url,
                         "one_adult_redirect_url": flight_data.one_adult_redirect_url,
                         "two_adult_redirect_url": flight_data.two_adult_redirect_url,
-                        "adult_price": flight_data.adult_price,
-                        "child_price": flight_data.child_price,
-                        "infant_price": flight_data.infant_price,
                         "remaining_seat": flight_data.remaining_seat,
                         "last_crawled_uid": request.uid,
                     }
                 )
-                
-                if not created and website.last_crawled_uid == request.uid: 
-                    Website.objects.create(
-                        uid=flight_data.provider_uid,
-                        flight=flight,
-                        adult_price=flight_data.adult_price,
-                        child_price=flight_data.child_price,
-                        infant_price=flight_data.infant_price,
-                        base_redirect_url=flight_data.base_redirect_url,
-                        one_adult_redirect_url=flight_data.one_adult_redirect_url,
-                        two_adult_redirect_url=flight_data.two_adult_redirect_url,
-                        remaining_seat=flight_data.remaining_seat,
-                        is_valid=True,
-                        last_crawled_uid=request.uid,
-                    )
-                
-                elif not created and website.last_crawled_uid != request.uid:
-                    website.one_adult_redirect_url = flight_data.one_adult_redirect_url
-                    website.two_adult_redirect_url = flight_data.two_adult_redirect_url
-                    website.base_redirect_url = flight_data.base_redirect_url
-                    website.adult_price = flight_data.adult_price
-                    website.child_price = flight_data.child_price
-                    website.infant_price = flight_data.infant_price
-                    website.remaining_seat = flight_data.remaining_seat
-                    website.is_valid = True
-                    website.last_crawled_uid = request.uid
 
-                remaining_seat = flight_data.remaining_seat if flight_data.remaining_seat is not None else 0
-                if remaining_seat > 0:
-                    website.remaining_seat = remaining_seat
-                    website.is_valid = True
-                else:
-                    website.is_valid = False
-                    
-                website.last_crawled_uid = request.uid
+                print(f"\n\nwebsite ===>>> {website.__dict__}\n\n")
+                print(f"create ===>>> {created}")
+                
+                if not created:
+                    if flight_data.one_adult_redirect_url is not None: 
+                        website.one_adult_redirect_url = flight_data.one_adult_redirect_url
+                    if flight_data.two_adult_redirect_url is not None:
+                        website.two_adult_redirect_url = flight_data.two_adult_redirect_url
+                    if flight_data.base_redirect_url is not None:
+                        website.base_redirect_url = flight_data.base_redirect_url
 
-                website.save()
+                    if flight_data.adult_price is not None:
+                        website.adult_price = flight_data.adult_price
+                    if flight_data.child_price is not None:
+                        website.child_price = flight_data.child_price
+                    if flight_data.infant_price is not None:
+                        website.infant_price = flight_data.infant_price
+
+                    website.save()
                     
                 logger.debug(f"\n\nwebsite: {website.__dict__}\n\n")
                 
