@@ -11,6 +11,7 @@ from apps.airlines import interfaces as airline_interfaces
 from apps.accounts import interfaces as account_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from utils.http_requester import interfaces as http_requester_interfaces
+from utils.proxy_manager import interfaces as proxy_manager_interfaces
 from apps.flight_crawler.models import Website, WebsiteRoute
 from . import interfaces
 
@@ -59,6 +60,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                  http_requester: http_requester_interfaces.AbstractHTTPRequester,
                  cache_service: cache_interfaces.ICacheService,
                  airline_service: airline_interfaces.AbstractAirlineService,
+                 proxy_manager: proxy_manager_interfaces.AbstractProxyManager,
                  max_adults: int = 1,
                  ):
         self.claim = claim
@@ -70,6 +72,15 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.cache_service = cache_service
         self.http_requester = http_requester
         self.max_adults = max_adults
+        self.proxy_manager = proxy_manager
+
+    def _get_proxy(self) -> str:
+        """Get a working proxy from the proxy manager"""
+        proxy = self.proxy_manager.get_proxy()
+        if not proxy:
+            logger.warning("No working proxy available")
+            return None
+        return proxy
 
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
         try:
@@ -245,12 +256,16 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
             while retry_count < max_retries:
                 try:
+                    # Get a new proxy for each request
+                    proxy = self._get_proxy()
+                    
                     if method == GET_METHOD:
                         logger.info(f"Making GET request to {url} (Attempt {retry_count + 1}/{max_retries})")
                         response = self.http_requester.get(
                             url=url,
                             headers=headers,
-                            params=params
+                            params=params,
+                            proxy=proxy
                         )
                     else:  # POST method
                         logger.info(f"Making POST request to {url} (Attempt {retry_count + 1}/{max_retries})")
@@ -258,13 +273,15 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
-                                params=params
+                                params=params,
+                                proxy=proxy
                             )
                         else:
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
-                                json=json
+                                json=json,
+                                proxy=proxy
                             )
 
                     if response.status_code == 200:
@@ -272,10 +289,16 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     else:
                         logger.warning(f"Request failed with status code {response.status_code} (Attempt {retry_count + 1}/{max_retries})")
                         last_error = interfaces.UnsuccessfulRequest()
+                        # Remove failed proxy
+                        if proxy:
+                            self.proxy_manager.remove_proxy(proxy)
 
                 except Exception as e:
                     logger.error(f"Request failed with error: {str(e)} (Attempt {retry_count + 1}/{max_retries})")
                     last_error = e
+                    # Remove failed proxy
+                    if proxy:
+                        self.proxy_manager.remove_proxy(proxy)
 
                 retry_count += 1
                 if retry_count < max_retries:
@@ -353,6 +376,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         url=search_id_request_structure[API_URL],
                         headers=base_headers,
                         params=search_id_request_params,
+                        proxy=self._get_proxy()
                     )
 
                 else:
@@ -362,6 +386,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     response = self.http_requester.get(
                         url=search_id_request_structure[API_URL] + '/' + search_id,
                         headers=base_headers,
+                        proxy=self._get_proxy()
                     )
             else:
                 logger.info(f"Making POST request to {search_id_request_structure[API_URL]}")
@@ -378,7 +403,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 response = self.http_requester.post(
                     url=search_id_request_structure[API_URL],
                     headers=base_headers,
-                    json=search_id_body
+                    json=search_id_body,
+                    proxy=self._get_proxy()
                 )
 
             if response.status_code != 200:

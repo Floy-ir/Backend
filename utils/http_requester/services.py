@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import requests
 import logging
 from . import interfaces
@@ -11,14 +11,22 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
 
     def request(self, method: str, url: str, data=None, retry_statuses: List[int] = None,
                 parse_response_as_json: bool = True, timeout: Tuple[int, int] = (10, 30),
-                max_retries: int = 3, retry_delay: int = 5, **kwargs) -> interfaces.RequesterResponse:
+                max_retries: int = 3, retry_delay: int = 5, proxy: Optional[str] = None, **kwargs) -> interfaces.RequesterResponse:
         logger.info(f"method:{method},url:{url},data:{data},retry_statuses:{retry_statuses},"
-                    f"parse_response_as_json:{parse_response_as_json},timeout:{timeout},kwargs:{kwargs}")
+                    f"parse_response_as_json:{parse_response_as_json},timeout:{timeout},proxy:{proxy},kwargs:{kwargs}")
 
         if retry_statuses is None:
             retry_statuses = [500, 502, 503, 504]
 
         logger.debug(f"Requesting URL: {url}")
+
+        # Configure proxy if provided
+        proxies = None
+        if proxy:
+            proxies = {
+                'http': proxy,
+                'https': proxy
+            }
 
         try:
             response = requests.request(
@@ -29,6 +37,8 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
                 timeout=timeout,
                 params=kwargs.get("params", None),
                 headers=kwargs.get("headers", None),
+                proxies=proxies,
+                verify=False  # Disable SSL verification when using proxy
             )
         except requests.exceptions.ConnectionError as e:
             logger.warning(f'Connection error occurred while requesting URL: {url}. Error details: {e}')
@@ -50,6 +60,8 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
                             url=location,
                             timeout=timeout,
                             headers=kwargs.get("headers", None),
+                            proxies=proxies,
+                            verify=False
                         )
                         if poll_response.status_code == 200:
                             response = poll_response
@@ -72,6 +84,8 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
                             timeout=timeout,
                             params=kwargs.get("params", None),
                             headers=kwargs.get("headers", None),
+                            proxies=proxies,
+                            verify=False
                         )
                         if retry_response.status_code == 200:
                             response = retry_response

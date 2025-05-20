@@ -18,6 +18,7 @@ from apps.statistics.services import StatisticsService
 from libs.redis_client.services import CacheService
 from utils.date_time.services import DateTimeUtils
 from utils.http_requester.services import RequestsHTTPRequester
+from utils.proxy_manager.services import ProxyManager
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,17 @@ class Bootstrapper:
             )
         )
 
+        _proxy = kwargs.get('proxy', None)
+        _proxy_list_url = kwargs.get('proxy_list_url', "https://free-proxy-list.net/")
+        
+        self.config = {
+            'proxy': _proxy,
+            'proxy_list_url': _proxy_list_url,
+            'max_adults': _max_adults,
+        }
+
+        self.proxy_manager = ProxyManager(proxy_list_url=_proxy_list_url)
+        
         self._flight_crawler_service = kwargs.get(
             'flight_crawler_service',
             FlightCrawlerService(
@@ -119,7 +131,8 @@ class Bootstrapper:
                 http_requester=_http_requester,
                 cache_service=self._cache_service,
                 airline_service=self._airlines_service,
-                max_adults=_max_adults
+                proxy_manager=self.proxy_manager,
+                max_adults=self.config.get('max_adults', 1)
             )
         )
 
