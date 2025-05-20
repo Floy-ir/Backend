@@ -35,8 +35,8 @@ def normalize_airline(airline_name):
     
     # Remove "ایر" and "ایرلاین" from beginning and end
     normalized = normalized.strip()
-    prefixes_to_remove = ['ایر', 'ایرلاین']
-    suffixes_to_remove = ['ایر', 'ایرلاین']
+    prefixes_to_remove = ['ایرلاین']
+    suffixes_to_remove = ['ایرلاین', 'ایرویز']
     
     # Remove from beginning
     for prefix in prefixes_to_remove:
