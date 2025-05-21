@@ -6,6 +6,10 @@ def multiple_replace(dic, text):
     return re.sub(pattern, lambda m: dic[m.group()], str(text))
 
 def normalize_airline(airline_name):
+    # Check if 'تور' exists in the name
+    if 'تور' in airline_name:
+        return 'ایران ایرتور'
+        
     # Character replacement dictionary
     dic = {
         'ك': 'ک',
