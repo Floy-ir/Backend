@@ -15,10 +15,16 @@ services:
     command: runserver 0.0.0.0:8000
     ports:
       - "8000:8000"
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.5
     depends_on:
-      - db
-      - redis
-      - minio
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
   db:
     image: docker.arvancloud.ir/postgres:15
@@ -35,6 +41,14 @@ services:
       POSTGRES_PORT: ${POSTGRES_PORT}
     ports:
       - "5432:5432"
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.2
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: docker.arvancloud.ir/redis:7-alpine
@@ -45,6 +59,14 @@ services:
     volumes:
       - redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.3
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   minio:
     image: docker.arvancloud.ir/minio/minio:RELEASE.2023-11-01T01-57-10Z-cpuv1
@@ -60,7 +82,15 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.7
     command: server /data --console-address ":9001" --address ":9000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   celery-beat:
     build:
@@ -71,14 +101,21 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - .:/app
+      - celerybeat_data:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
     command: worker --beat --loglevel=DEBUG
     env_file:
       - .env
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.6
     depends_on:
-      - db
-      - redis
-      - rabbitmq
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   rabbitmq:
     image: docker.arvancloud.ir/rabbitmq:3.12-management-alpine
@@ -86,6 +123,9 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.4
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 30s
@@ -96,3 +136,11 @@ volumes:
   pgdata:
   minio_data:
   redis_data:
+  celerybeat_data:
+
+networks:
+  floy_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
