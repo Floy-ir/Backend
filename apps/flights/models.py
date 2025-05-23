@@ -41,6 +41,7 @@ class Flight(models.Model):
     uid = models.CharField(max_length=128, unique=True)
     airline = models.CharField(max_length=128)
     origin = models.CharField(max_length=64)
+    flight_number = models.CharField(max_length=64, null=True, blank=True)
     destination = models.CharField(max_length=64)
     departure_timestamp = models.BigIntegerField()
     arrival_timestamp = models.BigIntegerField()
