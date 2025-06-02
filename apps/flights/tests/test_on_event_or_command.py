@@ -48,23 +48,6 @@ class EventCommandTestCase(TestCase):
                             remaining_seat=3,
                             provider_uid=self.alibaba,
                             one_adult_redirect_url="alibaba.ir/one_adult_redirect_url",
-                            two_adult_redirect_url=None,
-                            base_redirect_url="alibaba.ir"
-                        ),
-                        flight_crawler_interfaces.Flight(
-                            airline='kish',
-                            flight_number='10',
-                            departure_timestamp=13,
-                            arrival_timestamp=24,
-                            seat_class='Economy',
-                            allowed_weight=20,
-                            adult_price=1000,
-                            child_price=500,
-                            infant_price=200,
-                            airplane_name=None,
-                            remaining_seat=3,
-                            provider_uid=self.alibaba,
-                            one_adult_redirect_url=None,
                             two_adult_redirect_url="alibaba.ir/two_adult_redirect_url",
                             base_redirect_url="alibaba.ir"
                         ),
@@ -169,6 +152,7 @@ class EventCommandTestCase(TestCase):
         ))
 
 
+        self.assertEqual(len(results.results), 3)
         result1 = interfaces.FlightDTO(
             airline=interfaces.AirlineDetail(
                 uid='kish', 
@@ -224,6 +208,9 @@ class EventCommandTestCase(TestCase):
                 ),
             ]
         )
+
+        print(f"\n\nresults.results[0]: {results.results[0]}")
+        print(f"result1: {result1}")
 
         self.assertEqual(results.results[0], result1)
 

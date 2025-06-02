@@ -16,7 +16,7 @@ class FakeAirlineService(airlines_interfaces.AbstractAirlineService):
             results[airline] = airlines_interfaces.AirlineDTO(
                 uid=airline,
                 name=f"Airline {airline}",
-                image=f"https://example.com/airline/{airline}.jpg",
+                image=None,
             )
 
         return results
@@ -25,7 +25,7 @@ class FakeAirlineService(airlines_interfaces.AbstractAirlineService):
         return airlines_interfaces.AirlineDTO(
             uid=uid,
             name=f"Airline {uid}",
-            image=f"https://example.com/airline/{uid}.jpg",
+            image=None,
         )
 
     def get_airline_by_name(self, name: str) -> airlines_interfaces.AirlineDTO:
