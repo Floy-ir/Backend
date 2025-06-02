@@ -200,7 +200,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 airlines=airlines_filters,
                 websites=websites_filters,
             ),
-            results=[self._convert_flight_to_dto(flight) for flight in flights_qs]
+            results=flights_results
         )
         logger.info(f"result: {result}")
         return result
