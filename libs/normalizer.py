@@ -6,6 +6,10 @@ def multiple_replace(dic, text):
     return re.sub(pattern, lambda m: dic[m.group()], str(text))
 
 def normalize_airline(airline_name):
+    # Check if 'تور' exists in the name
+    if 'تور' in airline_name:
+        return 'ایران ایرتور'
+        
     # Character replacement dictionary
     dic = {
         'ك': 'ک',
@@ -35,8 +39,8 @@ def normalize_airline(airline_name):
     
     # Remove "ایر" and "ایرلاین" from beginning and end
     normalized = normalized.strip()
-    prefixes_to_remove = ['ایر', 'ایرلاین']
-    suffixes_to_remove = ['ایر', 'ایرلاین']
+    prefixes_to_remove = ['ایرلاین']
+    suffixes_to_remove = ['ایرلاین', 'ایرویز', 'ایر']
     
     # Remove from beginning
     for prefix in prefixes_to_remove:

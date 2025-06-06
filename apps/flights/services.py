@@ -120,53 +120,75 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 if websites_min_price.get(website.uid) is None:
                     websites_min_price[website.uid] = float('inf')
 
-                # min_price = min(min_price, website.adult_price)
                 total_max_price = max(total_max_price, website.adult_price)
                 websites_min_price[website.uid] = min(websites_min_price[website.uid], website.adult_price)
 
-            airlines_uid.add(flight.airline)
-            if flight.cheapest_price is not None:
-                if airlines_min_price.get(flight.airline) is None:
-                    airlines_min_price[flight.airline] = float('inf')
+            if flight.airline:  # Only add non-None airline UIDs
+                airlines_uid.add(flight.airline)
+                if flight.cheapest_price is not None:
+                    if airlines_min_price.get(flight.airline) is None:
+                        airlines_min_price[flight.airline] = float('inf')
+                    airlines_min_price[flight.airline] = min(airlines_min_price[flight.airline], flight.cheapest_price)
 
-                airlines_min_price[flight.airline] = min(airlines_min_price[flight.airline], flight.cheapest_price)
-
-        self.airline_details = self.airlines_service.get_airlines(
-            request=airlines_interfaces.AirlineListReq(
-                uid_list=list(airlines_uid)
+        logger.info(f"Collecting airline details for UIDs: {list(airlines_uid)}")
+        try:
+            self.airline_details = self.airlines_service.get_airlines(
+                request=airlines_interfaces.AirlineListReq(
+                    uid_list=list(airlines_uid)
+                )
             )
-        )
+            logger.info(f"Received airline details: {self.airline_details}")
+        except Exception as e:
+            logger.error(f"Error getting airline details: {str(e)}")
+            self.airline_details = {}  # Set empty dict on error
 
-        self.website_details = self.flight_crawler_service.get_websites(
-            request=flight_crawler_interfaces.GetWebsitesRequest(
-                uid_list=list(websites_uid)
+        try:
+            self.website_details = self.flight_crawler_service.get_websites(
+                request=flight_crawler_interfaces.GetWebsitesRequest(
+                    uid_list=list(websites_uid)
+                )
             )
-        )
+            logger.info(f"Received website details: {self.website_details}")
+        except Exception as e:
+            logger.error(f"Error getting website details: {str(e)}")
+            self.website_details = {}  # Set empty dict on error
 
         airlines_filters = []
         for airline_uid, min_price in airlines_min_price.items():
-            airlines_filters.append(
-                interfaces.AirlineFilters(
-                    uid=airline_uid,
-                    min_price=min_price,
-                    name=self.airline_details[airline_uid].name,
-                    image=self.airline_details[airline_uid].image,
+            if airline_uid in self.airline_details:
+                airlines_filters.append(
+                    interfaces.AirlineFilters(
+                        uid=airline_uid,
+                        min_price=min_price,
+                        name=self.airline_details[airline_uid].name,
+                        image=self.airline_details[airline_uid].image,
+                    )
                 )
-            )
-
+            else:
+                logger.warning(f"Airline details not found for UID: {airline_uid}")
 
         websites_filters = []
         for website_uid, min_price in websites_min_price.items():
-            websites_filters.append(
-                interfaces.WebsiteFilters(
-                    uid=website_uid,
-                    name=self.website_details[website_uid].name,
-                    name_fa=self.website_details[website_uid].name_fa,
-                    image=self.website_details[website_uid].logo,
-                    min_price=min_price,
+            if website_uid in self.website_details:
+                websites_filters.append(
+                    interfaces.WebsiteFilters(
+                        uid=website_uid,
+                        name=self.website_details[website_uid].name,
+                        name_fa=self.website_details[website_uid].name_fa,
+                        image=self.website_details[website_uid].logo,
+                        min_price=min_price,
+                    )
                 )
-            )
-            
+            else:
+                logger.warning(f"Website details not found for UID: {website_uid}")
+
+        flights_results = []
+        for flight in flights_qs:
+            if flight.airline and flight.airline in self.airline_details and flight.cheapest_website_uid and flight.cheapest_website_uid in self.website_details:
+                flight_dto = self._convert_flight_to_dto(flight)
+                flights_results.append(flight_dto)
+            else:
+                logger.warning(f"Flight details not found for UID: {flight.airline} with website uid: {flight.cheapest_website_uid}")
 
         result = interfaces.GetFlightsResponse(
             count=flights_qs.count(),
@@ -178,7 +200,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 airlines=airlines_filters,
                 websites=websites_filters,
             ),
-            results=[self._convert_flight_to_dto(flight) for flight in flights_qs]
+            results=flights_results
         )
         logger.info(f"result: {result}")
         return result
@@ -315,18 +337,33 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
         for flight_data in request.results:
             try:
-                flight, created = Flight.objects.get_or_create(
-                    airline=flight_data.airline,
-                    origin=request.origin,
-                    destination=request.destination,
-                    departure_timestamp=flight_data.departure_timestamp,
-                    arrival_timestamp=flight_data.arrival_timestamp,
-                    allowed_weight=flight_data.allowed_weight,
-                    seat_class=flight_data.seat_class,
-                    defaults={
-                        "uid": str(uuid4())
-                    }
-                )
+                if flight_data.flight_number:
+                    flight, created = Flight.objects.get_or_create(
+                        flight_number=flight_data.flight_number,
+                        airline=flight_data.airline,
+                        origin=request.origin,
+                        destination=request.destination,
+                        defaults={
+                            "uid": str(uuid4()),
+                            "departure_timestamp": flight_data.departure_timestamp,
+                            "arrival_timestamp": flight_data.arrival_timestamp,
+                            "allowed_weight": flight_data.allowed_weight,
+                            "seat_class": flight_data.seat_class,
+                        }
+                    )
+                else:
+                    flight, created = Flight.objects.get_or_create(
+                        airline=flight_data.airline,
+                        origin=request.origin,
+                        destination=request.destination,
+                        departure_timestamp=flight_data.departure_timestamp,
+                        arrival_timestamp=flight_data.arrival_timestamp,
+                        allowed_weight=flight_data.allowed_weight,
+                        seat_class=flight_data.seat_class,
+                        defaults={
+                            "uid": str(uuid4())
+                        }
+                    )
 
                 website, created = Website.objects.get_or_create(
                     uid=flight_data.provider_uid,
@@ -414,6 +451,12 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
 
     def _convert_flight_to_dto(self, flight: Flight) -> interfaces.FlightDTO:
+        websites = []
+        for website in flight.websites.filter(is_valid=True):
+            if website.uid in self.website_details:
+                websites.append(self._convert_website_to_dto(website))
+            else:
+                logger.warning(f"Website details not found for UID: {website.uid}")
         return interfaces.FlightDTO(
             airline=interfaces.AirlineDetail(
                 uid=flight.airline,

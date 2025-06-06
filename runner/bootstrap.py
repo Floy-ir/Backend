@@ -37,7 +37,7 @@ class Bootstrapper:
         _date_time_utils = kwargs.get('date_time_utils', DateTimeUtils())
 
         # minio
-        _minio_hostname = os.getenv('MINIO_HOST', 'minio')
+        _minio_hostname = os.getenv('MINIO_HOST', '172.20.0.7')
         _minio_port = os.getenv('MINIO_PORT', '9000')
         _minio_access_key = os.getenv('MINIO_ROOT_USER', 'minio_access_key')
         _minio_secret_key = os.getenv('MINIO_ROOT_PASSWORD', 'minio_secret_key')

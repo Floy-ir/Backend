@@ -561,7 +561,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         value = int(value) / price_normalize_num
                     
                     if field_name == "allowed_weight": 
-                        value = int(str(value).split(" ")[0]) if value else 20 
+                        value = int(str(value).split(" ")[0]) if value else 20
+                        if value == 0: 
+                            value = 20
 
                     # Apply seat class mapping if this is the seat_class field
                     if field_name == "seat_class":

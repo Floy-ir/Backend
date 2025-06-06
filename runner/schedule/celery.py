@@ -12,8 +12,17 @@ app = Celery(
     'floy', 
     broker=os.getenv("BROKER_URL", "amqp://rabbitmq:5672"),
     config_source='runner.schedule.celery_config'
-    )
+)
 
+# Configure Celery settings
+app.conf.update(
+    beat_schedule_filename='/app/celerybeat-data/celerybeat-schedule',
+    broker_connection_retry_on_startup=True,
+    broker_connection_max_retries=10,
+    broker_pool_limit=10,
+    worker_prefetch_multiplier=1,
+    task_acks_late=True,
+)
 
 # Configure Celery Beat schedule
 app.conf.beat_schedule = {
