@@ -108,8 +108,6 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         airlines_min_price = {}
         websites_min_price = {}
 
-        logger.debug(f"flight_qa[0].cheapest_price: ", flights_qs[0].cheapest_price)
-
         for flight in flights_qs:
             allowed_weights.add(flight.allowed_weight)
             seat_classes.add(flight.seat_class)
