@@ -539,6 +539,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         if value == 0: 
                             value = 20
 
+                    if field_name == "flight_number":
+                        value = value[len(value) - 4: len(value)]
+
                     # Apply seat class mapping if this is the seat_class field
                     if field_name == "seat_class":
                         if seat_class_map.get('*', None) is not None:
