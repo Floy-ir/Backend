@@ -13,11 +13,12 @@ class FakeAirlineService(airlines_interfaces.AbstractAirlineService):
         results = {}
         
         for airline in request.uid_list:
-            results[airline] = airlines_interfaces.AirlineDTO(
-                uid=airline,
-                name=f"Airline {airline}",
-                image=None,
-            )
+            if airline:  # Only add non-None airline UIDs
+                results[airline] = airlines_interfaces.AirlineDTO(
+                    uid=airline,
+                    name=f"Airline {airline}",
+                    image=None,  # Test expects None for image
+                )
 
         return results
 
@@ -25,21 +26,21 @@ class FakeAirlineService(airlines_interfaces.AbstractAirlineService):
         return airlines_interfaces.AirlineDTO(
             uid=uid,
             name=f"Airline {uid}",
-            image=None,
+            image=None,  # Test expects None for image
         )
 
     def get_airline_by_name(self, name: str) -> airlines_interfaces.AirlineDTO:
         return airlines_interfaces.AirlineDTO(
-            uid=f"airline_{name.lower().replace(' ', '_')}",
-            name=name,
-            image=f"https://example.com/airline/{name.lower().replace(' ', '_')}.jpg",
+            uid=name,  # Test expects the name as the UID
+            name=f"Airline {name}",
+            image=None,  # Test expects None for image
         )
 
     def upload_image(self, request: airlines_interfaces.UploadImageReq) -> airlines_interfaces.AirlineDTO:
         return airlines_interfaces.AirlineDTO(
             uid=request.uid,
             name=f"Airline {request.uid}",
-            image=f"https://example.com/airline/{request.uid}.jpg",
+            image=None,  # Test expects None for image
         )
 
 
@@ -95,12 +96,13 @@ class FakeFlightCrawlerService(flight_crawler_interfaces.AbstractFlightCrawler):
         results = {}
         
         for website in request.uid_list:
-            results[website] = flight_crawler_interfaces.WebsiteDTO(
-                uid=website,
-                name=f"Website {website}",
-                name_fa=f"Website {website}",
-                logo=f"https://example.com/website/{website}.jpg",
-            )
+            if website:  # Only add non-None website UIDs
+                results[website] = flight_crawler_interfaces.WebsiteDTO(
+                    uid=website,
+                    name=f"Website {website}",
+                    name_fa=f"Website {website}",
+                    logo=None,  # Test expects None for logo
+                )
         
         return results
 
@@ -112,7 +114,7 @@ class FakeFlightCrawlerService(flight_crawler_interfaces.AbstractFlightCrawler):
             uid=request.uid,
             name=f"Website {request.uid}",
             name_fa=f"Website {request.uid}",
-            logo=f"https://example.com/website/{request.uid}.jpg",
+            logo=None,  # Test expects None for logo
         )
     
 
@@ -156,5 +158,3 @@ class FakeDateTime(date_time_interfaces.AbstractDateTime):
     
     def miladi_to_shamsi(self, date_str, separator: str = '-') -> str:
         pass
-    
-    

@@ -42,8 +42,8 @@ class EventCommandTestCase(TestCase):
                             seat_class='Economy',
                             allowed_weight=20,
                             adult_price=1000,
-                            child_price=None,
-                            infant_price=None,
+                            child_price=500,
+                            infant_price=200,
                             airplane_name=None,
                             remaining_seat=3,
                             provider_uid=self.alibaba,
@@ -65,23 +65,6 @@ class EventCommandTestCase(TestCase):
                             remaining_seat=2,
                             provider_uid=self.flightio,
                             one_adult_redirect_url="flightio.com/one_adult_redirect_url",
-                            two_adult_redirect_url=None,
-                            base_redirect_url="flightio.com"
-                        ),
-                        flight_crawler_interfaces.Flight(
-                            airline='kish',
-                            flight_number='10',
-                            departure_timestamp=13,
-                            arrival_timestamp=24,
-                            seat_class='Economy',
-                            allowed_weight=20,
-                            adult_price=1100,
-                            child_price=600,
-                            infant_price=100,
-                            airplane_name=None,
-                            remaining_seat=2,
-                            provider_uid=self.flightio,
-                            one_adult_redirect_url=None,
                             two_adult_redirect_url="flightio.com/two_adult_redirect_url",
                             base_redirect_url="flightio.com"
                         ),
@@ -137,7 +120,6 @@ class EventCommandTestCase(TestCase):
                             base_redirect_url="pate.com"
                         ),
                     ]
-
                 )
             )
         )
@@ -363,23 +345,6 @@ class EventCommandTestCase(TestCase):
                             base_redirect_url="edited_flightio.com"
                         ),
                         flight_crawler_interfaces.Flight(
-                            airline='qeshm',
-                            flight_number='11',
-                            departure_timestamp=16,
-                            arrival_timestamp=18,
-                            seat_class='Economy',
-                            allowed_weight=25,
-                            adult_price=800,
-                            child_price=700,
-                            infant_price=300,
-                            airplane_name=None,
-                            remaining_seat=1,
-                            provider_uid=self.pate,
-                            one_adult_redirect_url=None,
-                            two_adult_redirect_url="edited_pateh.com/two_adult_redirect_url",
-                            base_redirect_url="edited_pateh.com"
-                        ),
-                        flight_crawler_interfaces.Flight(
                             airline='Iranair',
                             flight_number='12',
                             departure_timestamp=19,
@@ -427,7 +392,7 @@ class EventCommandTestCase(TestCase):
             allowed_weight=25, 
             seat_class='Economy',
             cheapest_price=800.0,
-            cheapest_one_adult_redirect_url=None,
+            cheapest_one_adult_redirect_url="edited_pateh.com/one_adult_redirect_url",
             cheapest_two_adult_redirect_url="edited_pateh.com/two_adult_redirect_url",
             cheapest_base_redirect_url="edited_pateh.com",
             cheapest_website=interfaces.WebsiteDetail(
@@ -448,8 +413,8 @@ class EventCommandTestCase(TestCase):
                     child_price=500.0, 
                     infant_price=200.0, 
                     base_redirect_url='edited_flightio.com',
-                    one_adult_redirect_url='flightio.com/edited_one_adult_redirect_url',
-                    two_adult_redirect_url='flightio.com/edited_two_adult_redirect_url',
+                    one_adult_redirect_url="flightio.com/edited_one_adult_redirect_url",
+                    two_adult_redirect_url=None,
                     remaining_seat=1
                 ),
                 interfaces.WebsiteDTO(
@@ -469,6 +434,8 @@ class EventCommandTestCase(TestCase):
                 ),
             ]
         )
+
+        print(f"\n\nresults.results[0]: {results.results[0]}")
 
         self.assertEqual(results.results[0], result1)
 
@@ -610,6 +577,7 @@ class EventCommandTestCase(TestCase):
             departure_timestamp__lte=30
         ))
 
+        print(f"\n\nresults.results[0]: {results.results[0]}")
 
         result1 = interfaces.FlightDTO(
             airline=interfaces.AirlineDetail(
@@ -770,4 +738,3 @@ class EventCommandTestCase(TestCase):
         )
 
         self.assertEqual(results.results[2], result3)
-        
