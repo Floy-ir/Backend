@@ -191,6 +191,9 @@ class EventCommandTestCase(TestCase):
             ]
         )
 
+        print(f"\n\nresults.results[0]: {results.results[0]}")
+        print(f"result1: {result1}")
+
         self.assertEqual(results.results[0], result1)
 
         result2 = interfaces.FlightDTO(
