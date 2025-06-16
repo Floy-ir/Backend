@@ -200,7 +200,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         if not missing_uids:
             return result
 
-        logger.debug(f"Cache miss for websites with uids: {','.join(missing_uids)}")
         websites = Website.objects.filter(uid__in=missing_uids)
 
         for website in websites:
@@ -294,13 +293,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 )
 
                 response_data = response.content_json
-                logger.info(f"Response data: {response_data}")
-
                 # Check if is_finished_field exists in request_structure
                 if IS_FINISHED_FIELD in request_structure:
-                    logger.info(self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD]))
-                    logger.info(f'request_structure[IS_FINISHED_FIELD]: {request_structure[IS_FINISHED_FIELD]}')
-                    
                     is_api_call_finished = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
                     if is_api_call_finished is None: 
                         is_continued = False
@@ -327,13 +321,10 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         # Check if search_id_request_structure exists before proceeding
         if SEARCH_ID_REQUEST_STRUCTURE not in request_structure or not request_structure[SEARCH_ID_REQUEST_STRUCTURE]:
             result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
-            logger.info(f"result: {result}")
             return result
 
         search_id_request_structure = request_structure[SEARCH_ID_REQUEST_STRUCTURE]
-        logger.debug(f"\n\n\nsearch_id_request_structure: {search_id_request_structure}\n\n\n")
         search_id = self._extract_nested_value(response_data, search_id_request_structure[SEARCH_ID])
-        logger.info(f'search id: {search_id}')
 
         is_continued = True
         while is_continued:
@@ -385,7 +376,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 raise interfaces.UnsuccessfulRequest()
 
             response_data = response.content_json
-            logger.debug(f"\n\n 370 line response_data: {response_data}\n\n\n")
             all_flights.extend(self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH]))
             
             # Check if is_finished_field exists before using it
@@ -404,7 +394,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 time.sleep(3)
 
         result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
-        logger.info(f"result: {result}")
         return result
 
     def _format_inputs(self, request_structure, search_params: interfaces.CrawlRequest):
@@ -470,7 +459,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         return formatted_params
 
     def _parse_response(self, source: WebsiteRoute, flights, parser, request) -> List[interfaces.Flight]:
-        logger.debug(f"source: {source.__dict__}, parser: {parser}")
         fields_map = parser.get(FIELDS, {})
         website = source.website
         airline_value_map = parser.get("airline_mapping", {})
@@ -483,9 +471,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         if base_redirect_config:
             base_redirect_city_map = source.config.get(CITY_MAPPING, {})
             base_redirect_origin = base_redirect_city_map.get(request.origin, request.origin)
-            logger.debug(f"\n\nbase_redirect_origin ==>> {base_redirect_origin}\n\n")
             base_redirect_dest = base_redirect_city_map.get(request.destination, request.destination)
-            logger.debug(f"\n\n base_redirect_dest ==>> {base_redirect_dest}\n\n")
 
             base_redirect_date = base_redirect_config.get(DATE_FIELDS, {})
             if base_redirect_date.get(IS_JALALI, False):
@@ -498,12 +484,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     timestamp=request.departure_timestamp,
                     date_format=base_redirect_date.get('date_format', "%Y-%m-%d")
                 )
-
-            logger.debug(f"redirect_date: {redirect_date}")
-
             base_redirect_url_template = Template(website.redirect_url_template)
-
-            logger.debug(f"base_redirect_template: {base_redirect_url_template}")
 
             base_redirect_url = base_redirect_url_template.safe_substitute(
                 origin=base_redirect_origin,
@@ -511,15 +492,12 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 departure_date=redirect_date
             )
 
-            logger.debug(f"base_redirect_Url: {base_redirect_url}")
-
         parsed_flights = []
 
 
         print(f"\n\nlen_flights: {len(flights)}\n\n")
 
         for raw_flight in flights:
-            logger.debug(f"\nraw_flight: {raw_flight}\n\n")
             remianing_seat = self._extract_nested_value(raw_flight, fields_map["remaining_seat"])
             if remianing_seat is None or int(remianing_seat) <= 0:
                 logger.debug("don't add because of non remaining seat")
@@ -591,7 +569,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
                 parsed_dict["base_redirect_url"] = base_redirect_url
                 
-                logger.debug(f"parsed_dict: {parsed_dict}")
                 try:
                     parsed_flight = interfaces.Flight(**parsed_dict)
                     parsed_flights.append(parsed_flight)
