@@ -28,10 +28,10 @@ app.conf.update(
 app.conf.beat_schedule = {
     'crawl_three_days_ahead': {
         'task': 'runner.schedule.tasks.crawl_three_days_ahead',
-        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+        'schedule': crontab(minute='0-59/10'),  # 0, 10, 20, 30, ...
     },
     'crawl_four_and_more_days_ahead': {
         'task': 'runner.schedule.tasks.crawl_four_and_more_days_ahead',
-        'schedule': crontab(minute='*/10'),  # Every 10 minutes
+        'schedule': crontab(minute='5-59/10'),  # 5, 15, 25, 35, ...
     },
 }
