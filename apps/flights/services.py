@@ -9,6 +9,7 @@ from apps.event_bus import interfaces as event_bus_interfaces
 from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from utils.date_time import interfaces as date_time_interfaces
+from django.core.exceptions import MultipleObjectsReturned
 from .models import Flight, Website
 from constants import SECOND_IN_A_DAY
 from django.db.models import Q
@@ -335,45 +336,23 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
         for flight_data in request.results:
             try:
-                if flight_data.flight_number:
-                    flights = Flight.objects.filter(
-                        flight_number__isnull=True,
+                try:
+                    if flight_data.flight_number:
+                        flight, created = Flight.objects.get_or_create(
+                        flight_number=flight_data.flight_number,
                         airline=flight_data.airline,
                         origin=request.origin,
                         destination=request.destination,
-                        departure_timestamp=flight_data.departure_timestamp,
-                        arrival_timestamp=flight_data.arrival_timestamp,
-                        allowed_weight=flight_data.allowed_weight,
-                        seat_class=flight_data.seat_class,
-                    ).update(flight_number=flight_data.flight_number)
-                    
-                    if len(flights) == 0:
-                        flight = Flight.objects.create(
-                            flight_number=flight_data.flight_number,
-                            airline=flight_data.airline,
-                            origin=request.origin,
-                            destination=request.destination,
-                            departure_timestamp=flight_data.departure_timestamp,
-                            arrival_timestamp=flight_data.arrival_timestamp,
-                            allowed_weight=flight_data.allowed_weight,
-                            seat_class=flight_data.seat_class,
-                            uid=str(uuid4()),
-                        )
-                    else:
-                        flight = flights[0]
-
-                else:
-                    flights = Flight.objects.filter(
-                        airline=flight_data.airline,
-                        origin=request.origin,
-                        destination=request.destination,
-                        departure_timestamp=flight_data.departure_timestamp,
-                        arrival_timestamp=flight_data.arrival_timestamp,
-                        allowed_weight=flight_data.allowed_weight,
-                        seat_class=flight_data.seat_class,
+                        defaults={
+                            "uid": str(uuid4()),
+                            "departure_timestamp": flight_data.departure_timestamp,
+                            "arrival_timestamp": flight_data.arrival_timestamp,
+                            "allowed_weight": flight_data.allowed_weight,
+                            "seat_class": flight_data.seat_class,
+                        }
                     )
-                    if len(flights) == 0:
-                        flight = Flight.objects.create(
+                    else:
+                        flight, created = Flight.objects.get_or_create(
                             airline=flight_data.airline,
                             origin=request.origin,
                             destination=request.destination,
@@ -381,10 +360,21 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                             arrival_timestamp=flight_data.arrival_timestamp,
                             allowed_weight=flight_data.allowed_weight,
                             seat_class=flight_data.seat_class,
-                            uid=str(uuid4()),
+                            defaults={
+                                "uid": str(uuid4())
+                            }
                         )
-                    else:
-                        flight = flights[0]
+                except MultipleObjectsReturned:
+                    logger.info(f"Multiple objects returned for flight")
+                    flight = Flight.objects.filter(
+                        airline=flight_data.airline,
+                        origin=request.origin,
+                        destination=request.destination,
+                        departure_timestamp=flight_data.departure_timestamp,
+                        arrival_timestamp=flight_data.arrival_timestamp,
+                        allowed_weight=flight_data.allowed_weight,
+                        seat_class=flight_data.seat_class,
+                    ).order_by('-flight_number').first()
 
                 website, created = Website.objects.get_or_create(
                     uid=flight_data.provider_uid,
