@@ -339,18 +339,18 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                 try:
                     if flight_data.flight_number:
                         flight, created = Flight.objects.get_or_create(
-                        flight_number=flight_data.flight_number,
-                        airline=flight_data.airline,
-                        origin=request.origin,
-                        destination=request.destination,
-                        defaults={
-                            "uid": str(uuid4()),
-                            "departure_timestamp": flight_data.departure_timestamp,
-                            "arrival_timestamp": flight_data.arrival_timestamp,
-                            "allowed_weight": flight_data.allowed_weight,
-                            "seat_class": flight_data.seat_class,
-                        }
-                    )
+                            flight_number=flight_data.flight_number,
+                            airline=flight_data.airline,
+                            origin=request.origin,
+                            destination=request.destination,
+                            defaults={
+                                "uid": str(uuid4()),
+                                "departure_timestamp": flight_data.departure_timestamp,
+                                "arrival_timestamp": flight_data.arrival_timestamp,
+                                "allowed_weight": flight_data.allowed_weight,
+                                "seat_class": flight_data.seat_class,
+                            }
+                        )
                     else:
                         flight, created = Flight.objects.get_or_create(
                             airline=flight_data.airline,
