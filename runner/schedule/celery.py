@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'runner.settings')
 
 BROKER_URL = os.getenv("BROKER_URL", "amqp://rabbitmq:5672")
+QUEUE_NAME = "celery"  # Change if you use a custom queue
 THRESHOLD = 10       # Set your desired threshold
 
 def get_queue_length(broker_url, queue_name):
