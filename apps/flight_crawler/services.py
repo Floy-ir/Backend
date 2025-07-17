@@ -134,7 +134,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             List[interfaces.Flight]: A list of Flight objects representing the crawled flights.
         """
         try:
-            flights = [] 
+            flights = []
             websites_route = WebsiteRoute.objects.filter(
                 origin=request.origin,
                 destination=request.destination,

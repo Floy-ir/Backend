@@ -2,17 +2,49 @@ import os
 from celery import Celery
 import logging
 from celery.schedules import crontab
-
+from kombu import Connection
 
 logger = logging.getLogger(__name__)
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'runner.settings')
 
-app = Celery(
+BROKER_URL = os.getenv("BROKER_URL", "amqp://rabbitmq:5672")
+QUEUE_NAME = "celery"  # Change if you use a custom queue
+THRESHOLD = 10       # Set your desired threshold
+
+def get_queue_length(broker_url, queue_name):
+    with Connection(broker_url) as conn:
+        simple_queue = conn.SimpleQueue(queue_name)
+        length = simple_queue.qsize()
+        simple_queue.close()
+        return length
+
+class ThresholdCelery(Celery):
+    def send_task(self, *args, **kwargs):
+        if get_queue_length(BROKER_URL, QUEUE_NAME) < THRESHOLD:
+            return super().send_task(*args, **kwargs)
+        else:
+            logger.warning("Queue is full, not adding new task: %s", args[0])
+            return None
+
+app = ThresholdCelery(
     'floy', 
-    broker=os.getenv("BROKER_URL", "amqp://rabbitmq:5672"),
+    broker=BROKER_URL,
     config_source='runner.schedule.celery_config'
 )
+
+# Patch all tasks to check threshold before apply_async
+from celery import Task as CeleryTask
+_original_apply_async = CeleryTask.apply_async
+
+def threshold_apply_async(self, *args, **kwargs):
+    if get_queue_length(BROKER_URL, QUEUE_NAME) < THRESHOLD:
+        return _original_apply_async(self, *args, **kwargs)
+    else:
+        logger.warning("Queue is full, not adding new task: %s", self.name)
+        return None
+
+CeleryTask.apply_async = threshold_apply_async
 
 # Configure Celery settings
 app.conf.update(
@@ -21,7 +53,8 @@ app.conf.update(
     broker_connection_max_retries=10,
     broker_pool_limit=10,
     worker_prefetch_multiplier=1,
-    task_acks_late=True,
+    task_acks_late=False,
+    task_acks_on_success=False,
 )
 
 # Configure Celery Beat schedule
