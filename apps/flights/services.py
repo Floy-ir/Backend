@@ -329,11 +329,6 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
         )
 
     def _create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
-        logger.info(f"Creating flight with request: {request}")
-        
-        logger.info(f"\n\n\n number of tickets {len(request.results)}")
-        logger.info(f"rquest timestamp: {request.crawl_timestamp}\n\n\n")
-
         for flight_data in request.results:
             try:
                 try:
@@ -426,18 +421,10 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                     
                 website.last_crawled_uid = request.uid
 
-                website.save()
-                    
-                logger.debug(f"\n\nwebsite: {website.__dict__}\n\n")
-                
-                logger.info(f"Created or updated flight with uid: {flight.uid}")
+                website.save()  
             except Exception as e: 
                 logger.error(f"error in add flight to db: {e}")
                 continue
-
-
-        print(f"\n\nrequest.crawl_timestamp: {request.crawl_timestamp}\n\n")
-        print(f"\n\nrequest.crawl_timestamp + SECOND_IN_A_DAY: {request.crawl_timestamp + SECOND_IN_A_DAY}\n\n")
 
         affected_websites = Website.objects.filter(
             flight__origin=request.origin,

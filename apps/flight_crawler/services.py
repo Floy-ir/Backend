@@ -74,7 +74,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
         try:
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
-            logger.debug(f"cities ==>>> {cities}")
             for i in range(from_days_ahead, to_days_ahead): 
                 target_timestamp = self.date_time.get_start_timestamp_of_day_from_today(timedelta_days=i)
                 
@@ -84,7 +83,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         destination = sec_city.value 
                         crawl_uid = str(uuid4())
                         flights = [] 
-                        logger.info(f"Processing route: {origin} -> {destination}")
+                        logger.info(f"Processing route: {origin} -> {destination} at {target_timestamp}")
 
                         try:
                             request = interfaces.CrawlRequest(
@@ -114,7 +113,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                             )
                             
                         except Exception as e:
-                            logger.info(f"crawled flights for {origin} -> {destination} error ==>> {e}")
+                            logger.error(f"crawled flights for {origin} -> {destination} error ==>> {e}")
                             continue                  
                     
         except Exception as e:
@@ -364,8 +363,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 }
                 search_id_body = self._format_inputs(search_id_request_structure, search_id_body)
 
-                logger.debug(f"\n\n\nsearch_id_body: {search_id_body}\n\n\n")
-
                 response = self.http_requester.post(
                     url=search_id_request_structure[API_URL],
                     headers=base_headers,
@@ -381,7 +378,6 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             # Check if is_finished_field exists before using it
             if IS_FINISHED_FIELD in request_structure:
                 is_continued = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
-                print(f"\n\n\nis_continued: {is_continued}\n\n\n")
                 if is_continued is None:
                     is_continued = False
                 else:
@@ -494,18 +490,14 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
         parsed_flights = []
 
-
-        print(f"\n\nlen_flights: {len(flights)}\n\n")
-
         for raw_flight in flights:
             remianing_seat = self._extract_nested_value(raw_flight, fields_map["remaining_seat"])
             if remianing_seat is None or int(remianing_seat) <= 0:
-                logger.debug("don't add because of non remaining seat")
+                logger.debug(f"don't add because of non remaining seat {remianing_seat} in {source.website.name}")
                 continue
 
             try:
                 parsed_dict = {}
-                print(f"\n\nhello\n\n")
                 for field_name, json_path in fields_map.items():
                     value = self._extract_nested_value(raw_flight, json_path)
 
@@ -575,7 +567,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 except Exception as e:
                     logger.warning(f"Error parsing flight: {e}, raw data: {parsed_dict}")
             except Exception as e:
-                logger.warning(f"Error parsing response: {e}, source: {source.__dict__}, flights: {flights}")
+                logger.warning(f"Error parsing response: {e}, source: {source.__dict__}, flight: {raw_flight}")
                 continue 
 
         return parsed_flights    

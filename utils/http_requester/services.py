@@ -98,7 +98,6 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
             content_bytes=response.content,
             content_json=content_json,
         )
-        logger.info(f"result:{result}")
         return result
 
     def get(self, *args, **kwargs):
