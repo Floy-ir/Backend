@@ -383,6 +383,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                     remaining_seat=flight_data.remaining_seat,
                     last_crawled_uid=request.uid,
                 )
+                logger.info("a new website create")
             except Exception as e: 
                 logger.error(f"error in add flight to db: {e}")
                 continue
@@ -406,8 +407,6 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
 
         for flight in affected_flights:
             flight.update_cheapest_info()
-
-
 
     def _convert_flight_to_dto(self, flight: Flight) -> interfaces.FlightDTO:
         websites = []
