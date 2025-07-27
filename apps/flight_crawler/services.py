@@ -459,6 +459,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         website = source.website
         airline_value_map = parser.get("airline_mapping", {})
         seat_class_map = parser.get("seat_class_mapping", {})
+        baggage_config = parser.get("baggage_config", "")
         date_fields = parser.get(DATE_FIELDS, {})
         base_redirect_config = parser.get("base_redirect_config", {})
         price_normalize_num = 10 if parser.get("currency", "IRR") == "IRR" else 1
@@ -504,10 +505,14 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     if field_name in ['adult_price', 'infant_price', 'child_price'] and value is not None:
                         value = int(value) / price_normalize_num
                     
-                    if field_name == "allowed_weight": 
-                        value = int(str(value).split(" ")[0]) if value else 20
-                        if value == 0: 
-                            value = 20
+                    if field_name == "allowed_weight":
+                        if baggage_config == "":
+                            value = int(str(value).split(" ")[0]) if value else 20
+                            if value == 0: 
+                                value = 20
+                        else:
+                            code_to_execute = baggage_config[5:]
+                            value = eval(f"value.{code_to_execute}")
 
                     if field_name == "flight_number":
                         value = value[len(value) - 4: len(value)]
