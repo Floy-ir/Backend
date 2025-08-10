@@ -416,3 +416,5 @@ sketch
 # End of https://www.toptal.com/developers/gitignore/api/python,django,react,visualstudiocode,pycharm
 volumes/
 
+
+detailed_logs.log*
