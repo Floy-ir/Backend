@@ -506,13 +506,16 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         value = int(value) / price_normalize_num
                     
                     if field_name == "allowed_weight":
-                        if baggage_config == "":
+                        try:
                             value = int(str(value).split(" ")[0]) if value else 20
                             if value == 0: 
                                 value = 20
-                        else:
-                            code_to_execute = baggage_config[5:]
-                            value = eval(f"value.{code_to_execute}")
+                        except Exception as e:
+                            if baggage_config:
+                                code_to_execute = baggage_config[5:]
+                                value = eval(f"value.{code_to_execute}")
+                            else:
+                                value = 20
 
                     if field_name == "flight_number":
                         value = value[len(value) - 4: len(value)]
