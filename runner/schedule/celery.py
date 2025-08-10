@@ -11,6 +11,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'runner.settings')
 BROKER_URL = os.getenv("BROKER_URL", "amqp://rabbitmq:5672")
 QUEUE_NAME = "celery"  # Change if you use a custom queue
 THRESHOLD = 10       # Set your desired threshold
+BEAT_ROLE = os.getenv("BEAT_ROLE", "both")
+BEAT_SCHEDULE_FILE = os.getenv("BEAT_SCHEDULE_FILE", "/app/celerybeat-data/celerybeat-schedule")
 
 def get_queue_length(broker_url, queue_name):
     with Connection(broker_url) as conn:
@@ -48,7 +50,7 @@ CeleryTask.apply_async = threshold_apply_async
 
 # Configure Celery settings
 app.conf.update(
-    beat_schedule_filename='/app/celerybeat-data/celerybeat-schedule',
+    beat_schedule_filename=BEAT_SCHEDULE_FILE,
     broker_connection_retry_on_startup=True,
     broker_connection_max_retries=10,
     broker_pool_limit=10,
@@ -57,14 +59,20 @@ app.conf.update(
     task_acks_on_success=False,
 )
 
-# Configure Celery Beat schedule
-app.conf.beat_schedule = {
-    'crawl_three_days_ahead': {
+# Configure Celery Beat schedule based on BEAT_ROLE
+role = (BEAT_ROLE or "").lower()
+schedule_entries = {}
+
+if role in ("three_days", "both", ""):
+    schedule_entries['crawl_three_days_ahead'] = {
         'task': 'runner.schedule.tasks.crawl_three_days_ahead',
         'schedule': crontab(minute='0-59/10'),  # 0, 10, 20, 30, ...
-    },
-    'crawl_four_and_more_days_ahead': {
+    }
+
+if role in ("four_plus", "both", ""):
+    schedule_entries['crawl_four_and_more_days_ahead'] = {
         'task': 'runner.schedule.tasks.crawl_four_and_more_days_ahead',
-        'schedule': crontab(minute='5-59/10'),  # 5, 15, 25, 35, ...
-    },
-}
+        'schedule': crontab(minute='5-59/20'),  # 5, 15, 25, 35, ...
+    }
+
+app.conf.beat_schedule = schedule_entries

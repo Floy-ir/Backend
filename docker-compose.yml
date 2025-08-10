@@ -92,23 +92,54 @@ services:
       timeout: 20s
       retries: 3
 
-  celery-beat:
+  celery-beat-three:
     build:
       context: .
       dockerfile: Dockerfile
     image: floy_backend:latest
-    container_name: celery-beat
+    container_name: celery-beat-three
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - .:/app
-      - celerybeat_data:/app/celerybeat-data
+      - celerybeat_data_three:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
     command: worker --beat --loglevel=DEBUG
     env_file:
       - .env
+    environment:
+      - BEAT_ROLE=three_days
+      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
     networks:
       floy_network:
         ipv4_address: 172.20.0.6
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  celery-beat-four:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: floy_backend:latest
+    container_name: celery-beat-four
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - .:/app
+      - celerybeat_data_four:/app/celerybeat-data
+    entrypoint: celery -A runner.schedule.celery
+    command: worker --beat --loglevel=DEBUG
+    env_file:
+      - .env
+    environment:
+      - BEAT_ROLE=four_plus
+      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.8
     depends_on:
       db:
         condition: service_healthy
@@ -136,7 +167,8 @@ volumes:
   pgdata:
   minio_data:
   redis_data:
-  celerybeat_data:
+  celerybeat_data_three:
+  celerybeat_data_four:
 
 networks:
   floy_network:
