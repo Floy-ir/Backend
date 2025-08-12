@@ -333,9 +333,14 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             try:
                 try:
                     if flight_data.flight_number:
+                        departure_date = self.date_time_utils.convert_timestamp_to_date(
+                            flight_data.departure_timestamp,
+                            '%Y-%m-%d'
+                        )
                         flight, created = Flight.objects.get_or_create(
                             flight_number=flight_data.flight_number,
                             airline=flight_data.airline,
+                            departure_date=flight_data,
                             origin=request.origin,
                             destination=request.destination,
                             defaults={

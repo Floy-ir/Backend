@@ -44,6 +44,7 @@ class Flight(models.Model):
     flight_number = models.CharField(max_length=64, null=True, blank=True)
     destination = models.CharField(max_length=64)
     departure_timestamp = models.BigIntegerField()
+    departure_date = models.DateField(null=True, blank=True)
     arrival_timestamp = models.BigIntegerField()
     allowed_weight = models.IntegerField()
     seat_class = models.CharField(
