@@ -318,11 +318,11 @@ class FlightsService(interfaces.AbstractFlightsService):
         )
 
     def create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
-        departure_date = self.date_time_utils.convert_timestamp_to_date(
-            flight_data.departure_timestamp,
-            '%Y-%m-%d'
-        )
         for flight_data in request.results:
+            departure_date = self.date_time_utils.convert_timestamp_to_date(
+                flight_data.departure_timestamp,
+                '%Y-%m-%d'
+            )
             try:
                 try:
                     if flight_data.flight_number:
@@ -351,6 +351,7 @@ class FlightsService(interfaces.AbstractFlightsService):
                             defaults={
                                 "uid": str(uuid4()),
                                 "departure_date": departure_date,
+                                "arrival_timestamp": flight_data.arrival_timestamp,
                                 "arrival_timestamp": flight_data.arrival_timestamp,
                             }
                         )
