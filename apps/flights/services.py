@@ -352,7 +352,6 @@ class FlightsService(interfaces.AbstractFlightsService):
                                 "uid": str(uuid4()),
                                 "departure_date": departure_date,
                                 "arrival_timestamp": flight_data.arrival_timestamp,
-                                "arrival_timestamp": flight_data.arrival_timestamp,
                             }
                         )
                 except MultipleObjectsReturned:
