@@ -32,6 +32,7 @@ services:
     container_name: floy_db
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
     env_file:
       - .env
     environment:
@@ -39,6 +40,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PORT: ${POSTGRES_PORT}
+      # PostgreSQL memory optimization
+      POSTGRES_SHARED_BUFFERS: 512MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_WORK_MEM: 4MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: 100
+      POSTGRES_WAL_BUFFERS: 16MB
+      POSTGRES_CHECKPOINT_SEGMENTS: 32
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
     ports:
       - "5432:5432"
     networks:
@@ -103,12 +113,14 @@ services:
       - .:/app
       - celerybeat_data_three:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
-    command: worker --beat --loglevel=DEBUG
+    command: worker --beat --loglevel=INFO --concurrency=1
     env_file:
       - .env
     environment:
       - BEAT_ROLE=three_days
       - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      - C_FORCE_ROOT=true
+      - PYTHONUNBUFFERED=1
     networks:
       floy_network:
         ipv4_address: 172.20.0.6
@@ -131,12 +143,14 @@ services:
       - .:/app
       - celerybeat_data_four:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
-    command: worker --beat --loglevel=DEBUG
+    command: worker --beat --loglevel=INFO --concurrency=2 --max-tasks-per-child=1000 --max-memory-per-child=512000
     env_file:
       - .env
     environment:
       - BEAT_ROLE=four_plus
       - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      - C_FORCE_ROOT=true
+      - PYTHONUNBUFFERED=1
     networks:
       floy_network:
         ipv4_address: 172.20.0.8

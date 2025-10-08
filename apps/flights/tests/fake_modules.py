@@ -3,7 +3,6 @@ from apps.airlines import interfaces as airlines_interfaces
 from apps.accounts import interfaces as accounts_interfaces
 from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from libs.redis_client import interfaces as cache_interfaces
-from apps.event_bus import interfaces as event_bus_interfaces
 from utils.date_time import interfaces as date_time_interfaces
 from typing import Dict, Any
 
@@ -117,15 +116,6 @@ class FakeFlightCrawlerService(flight_crawler_interfaces.AbstractFlightCrawler):
             logo=None,  # Test expects None for logo
         )
     
-
-
-class FakeEventBus(event_bus_interfaces.AbstractEventBus):
-    def emit(self, caller: accounts_interfaces.Session, event_or_command: event_bus_interfaces.EventOrCommand):
-        pass
-
-    def subscribe(self, caller: accounts_interfaces.Session, match_string: str, listener: event_bus_interfaces.AbstractEventListener) -> object:
-        pass
-
 
 
 class FakeDateTime(date_time_interfaces.AbstractDateTime):

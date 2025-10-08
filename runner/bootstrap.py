@@ -1,7 +1,6 @@
 import logging
 import os
 
-from apps.event_bus.services import EventBus
 from apps.flight_crawler.services import FlightCrawlerService
 # externals
 from externals.s3.services import MinioClientFactory
@@ -12,7 +11,6 @@ from apps.flight_city.services import FlightCityService
 from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
 from apps.flights.services import FlightsService
-from apps.event_bus.services import EventBus
 from apps.statistics.services import StatisticsService
 # libs services
 from libs.redis_client.services import CacheService
@@ -100,20 +98,12 @@ class Bootstrapper:
             )
         )
 
-        self._event_bus = kwargs.get(
-            'event_bus',
-            EventBus(
-                claim=accounts_interfaces.Session.for_internal_app(uid='event_bus'),
-                date_time_utils=_date_time_utils
-            )
-        )
-
         self._flight_crawler_service = kwargs.get(
             'flight_crawler_service',
             FlightCrawlerService(
                 claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
                 date_time_utils=_date_time_utils,
-                event_bus=self._event_bus,
+                flights_service=self._flights_service,
                 flight_city_service=self._flight_city_service,
                 file_storage_service=self._file_storage_service,
                 http_requester=_http_requester,
@@ -129,7 +119,6 @@ class Bootstrapper:
             FlightsService(
                 claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
                 airlines_service=self._airlines_service,
-                event_bus=self._event_bus,
                 date_time_utils=_date_time_utils,
                 flight_crawler_service=self._flight_crawler_service,
                 cache_service=self._cache_service
@@ -164,9 +153,6 @@ class Bootstrapper:
     
     def get_statistics_service(self) -> StatisticsService:
         return self._statistics_service
-    
-    def get_event_bus(self) -> EventBus: 
-        return self._event_bus
 
 
 def get_bootstrapper(**kwargs) -> Bootstrapper:

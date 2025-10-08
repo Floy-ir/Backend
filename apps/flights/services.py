@@ -5,7 +5,6 @@ from typing import List
 from utils.date_time import interfaces as date_time_interfaces
 from apps.airlines import interfaces as airlines_interfaces
 from apps.accounts import interfaces as accounts_interfaces
-from apps.event_bus import interfaces as event_bus_interfaces
 from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from utils.date_time import interfaces as date_time_interfaces
@@ -17,10 +16,9 @@ from django.db.models import Q
 logger = logging.getLogger(__name__)
 
 
-class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.AbstractEventBus):
+class FlightsService(interfaces.AbstractFlightsService):
     def __init__(self,
                  claim: accounts_interfaces.Session,
-                 event_bus: event_bus_interfaces.AbstractEventBus,
                  airlines_service: airlines_interfaces.AbstractAirlineService,
                  flight_crawler_service: flight_crawler_interfaces.AbstractFlightCrawler,
                  date_time_utils: date_time_interfaces.AbstractDateTime,
@@ -28,19 +26,10 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                  ):
         self.claim = claim
         self.airline_details = None
-        self.event_bus = event_bus
         self.airlines_service = airlines_service
         self.cache_service = cache_service
         self.flight_crawler_service = flight_crawler_service
         self.date_time_utils = date_time_utils  
-
-        self.event_bus.subscribe(self.claim, 'flight_crawler_service/CRAWLED_FLIGHT', self)
-
-    def on_event_or_command(self, emitter_claim: accounts_interfaces.Session,
-                            event_or_command: event_bus_interfaces.EventOrCommand):
-        if emitter_claim.user_uid == 'flight_crawler_service' and event_or_command.event_type == 'CRAWLED_FLIGHT':
-            payload: flight_crawler_interfaces.CrawlResponse = event_or_command.payload
-            self._create_flight(request=payload)
 
     def get_flights(self, request: interfaces.GetFlightsRequest) -> interfaces.GetFlightsResponse:
         logger.info(f"request: {request}")
@@ -328,7 +317,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
             results=results
         )
 
-    def _create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
+    def create_flight(self, request: flight_crawler_interfaces.CrawlResponse):
         departure_date = self.date_time_utils.convert_timestamp_to_date(
             flight_data.departure_timestamp,
             '%Y-%m-%d'
@@ -362,7 +351,7 @@ class FlightsService(interfaces.AbstractFlightsService, event_bus_interfaces.Abs
                             defaults={
                                 "uid": str(uuid4()),
                                 "departure_date": departure_date,
-                                "arrival_timestamp": arrival_date,
+                                "arrival_timestamp": flight_data.arrival_timestamp,
                             }
                         )
                 except MultipleObjectsReturned:
