@@ -7,6 +7,7 @@ from externals.s3.services import MinioClientFactory
 # apps interfaces
 from apps.accounts import interfaces as accounts_interfaces
 # apps services
+from apps.accounts.services import AccountService
 from apps.flight_city.services import FlightCityService
 from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
@@ -73,6 +74,11 @@ class Bootstrapper:
         )
 
         # apps
+        self._account_service = kwargs.get(
+            'account_service',
+            AccountService()
+        )
+
         self._file_storage_service = kwargs.get(
             'file_storage_service',
             FileStorageService(
@@ -132,6 +138,9 @@ class Bootstrapper:
             )
         )
 
+
+    def get_account_service(self) -> AccountService:
+        return self._account_service
 
     def get_flight_city_service(self):
         return self._flight_city_service

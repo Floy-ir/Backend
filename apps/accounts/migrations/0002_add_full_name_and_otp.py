@@ -1,0 +1,32 @@
+# Generated manually for adding full_name field and OTP model
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('accounts', '0001_initial'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='user',
+            name='full_name',
+            field=models.CharField(blank=True, max_length=255, null=True),
+        ),
+        migrations.CreateModel(
+            name='OTP',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('mobile', models.CharField(max_length=32)),
+                ('code', models.CharField(max_length=6)),
+                ('created_at', models.PositiveBigIntegerField()),
+                ('expires_at', models.PositiveBigIntegerField()),
+                ('is_used', models.BooleanField(default=False)),
+            ],
+            options={
+                'db_table': 'accounts_otp',
+            },
+        ),
+    ]

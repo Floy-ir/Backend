@@ -13,6 +13,7 @@ class CreateUserRequest(dataclasses.BaseModel):
     username: str
     mobile: str
     password: dataclasses.PasswordField
+    full_name: str | None = None
 
 
 class UpdateUserRequest(dataclasses.BaseModel):
@@ -26,6 +27,7 @@ class User(dataclasses.BaseModel):
     uid: dataclasses.UUIDField
     username: str | None = None
     mobile: str | None = None
+    full_name: str | None = None
     user_type: UserType | None = UserType.ORDINARY
     created_at: int | None = None
     modified_at: int | None = None
@@ -84,3 +86,28 @@ class CreateSessionRequest(dataclasses.BaseModel):
 class CreateAdminUserRequest(dataclasses.BaseModel):
     mobile: str
     password: dataclasses.PasswordField
+
+
+class SendOTPRequest(dataclasses.BaseModel):
+    mobile: str
+
+
+class VerifyOTPRequest(dataclasses.BaseModel):
+    mobile: str
+    code: str
+
+
+class SignupRequest(dataclasses.BaseModel):
+    mobile: str
+    password: dataclasses.PasswordField
+    full_name: str
+
+
+class LoginRequest(dataclasses.BaseModel):
+    mobile: str
+    password: str
+
+
+class AuthResponse(dataclasses.BaseModel):
+    token: str
+    user: User
