@@ -1,4 +1,5 @@
 import logging
+import sys
 from . import interfaces
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,10 @@ class MockSMSService(interfaces.AbstractSMSService):
         Mock implementation that logs the SMS instead of actually sending it.
         """
         logger.info(f"Mock SMS sent to {mobile}: {message}")
-        print(f"[MOCK SMS] To: {mobile}, Message: {message}")
+        print(f"\n{'='*50}")
+        print(f"[MOCK SMS] To: {mobile}")
+        print(f"[MOCK SMS] Message: {message}")
+        print(f"{'='*50}\n")
         return True
     
     def send_otp(self, mobile: str, code: str) -> bool:
@@ -23,6 +27,20 @@ class MockSMSService(interfaces.AbstractSMSService):
         Send OTP code via SMS.
         """
         message = f"Your verification code is: {code}"
+        
+        # Log to logger
+        logger.info(f"Mock OTP sent to {mobile}: {code}")
+        
+        # Print to console with forced flush
+        print(f"\n{'='*60}", flush=True)
+        print(f"🔐 OTP CODE FOR {mobile}", flush=True)
+        print(f"📱 Code: {code}", flush=True)
+        print(f"⏰ Valid for 5 minutes", flush=True)
+        print(f"{'='*60}\n", flush=True)
+        
+        # Also write to stderr to ensure it shows up
+        print(f"OTP CODE: {code} for {mobile}", file=sys.stderr, flush=True)
+        
         return self.send_sms(mobile, message)
 
 

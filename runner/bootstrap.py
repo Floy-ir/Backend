@@ -104,6 +104,17 @@ class Bootstrapper:
             )
         )
 
+        self._flights_service = kwargs.get(
+            'flights_service',
+            FlightsService(
+                claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
+                airlines_service=self._airlines_service,
+                date_time_utils=_date_time_utils,
+                flight_crawler_service=None,  # Will be set after crawler is created
+                cache_service=self._cache_service
+            )
+        )
+
         self._flight_crawler_service = kwargs.get(
             'flight_crawler_service',
             FlightCrawlerService(
@@ -119,17 +130,8 @@ class Bootstrapper:
             )
         )
 
-
-        self._flights_service = kwargs.get(
-            'flights_service',
-            FlightsService(
-                claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
-                airlines_service=self._airlines_service,
-                date_time_utils=_date_time_utils,
-                flight_crawler_service=self._flight_crawler_service,
-                cache_service=self._cache_service
-            )
-        )
+        # Update flights service with crawler service
+        self._flights_service.flight_crawler_service = self._flight_crawler_service
 
         self._statistics_service = kwargs.get(
             'statistics_service',

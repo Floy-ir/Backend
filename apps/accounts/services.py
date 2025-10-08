@@ -27,6 +27,7 @@ class AccountService(interfaces.AbstractAccountService):
         try:
             # Generate OTP code
             code = OTP.generate_code()
+            logger.info(f"Generated OTP code: {code} for mobile: {request.mobile}")
             
             # Get current timestamp
             current_time = int(timezone.now().timestamp())
@@ -43,8 +44,12 @@ class AccountService(interfaces.AbstractAccountService):
                 expires_at=expires_at
             )
             
+            logger.info(f"Created OTP record for {request.mobile}, calling SMS service...")
+            
             # Send SMS
             success = self.sms_service.send_otp(request.mobile, code)
+            
+            logger.info(f"SMS service returned: {success}")
             
             if success:
                 logger.info(f"OTP sent successfully to {request.mobile}")
