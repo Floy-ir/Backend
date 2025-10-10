@@ -7,6 +7,7 @@ from externals.s3.services import MinioClientFactory
 # apps interfaces
 from apps.accounts import interfaces as accounts_interfaces
 # apps services
+from apps.accounts.services import AccountService
 from apps.flight_city.services import FlightCityService
 from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
@@ -73,6 +74,11 @@ class Bootstrapper:
         )
 
         # apps
+        self._account_service = kwargs.get(
+            'account_service',
+            AccountService()
+        )
+
         self._file_storage_service = kwargs.get(
             'file_storage_service',
             FileStorageService(
@@ -98,6 +104,17 @@ class Bootstrapper:
             )
         )
 
+        self._flights_service = kwargs.get(
+            'flights_service',
+            FlightsService(
+                claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
+                airlines_service=self._airlines_service,
+                date_time_utils=_date_time_utils,
+                flight_crawler_service=None,  # Will be set after crawler is created
+                cache_service=self._cache_service
+            )
+        )
+
         self._flight_crawler_service = kwargs.get(
             'flight_crawler_service',
             FlightCrawlerService(
@@ -113,17 +130,8 @@ class Bootstrapper:
             )
         )
 
-
-        self._flights_service = kwargs.get(
-            'flights_service',
-            FlightsService(
-                claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
-                airlines_service=self._airlines_service,
-                date_time_utils=_date_time_utils,
-                flight_crawler_service=self._flight_crawler_service,
-                cache_service=self._cache_service
-            )
-        )
+        # Update flights service with crawler service
+        self._flights_service.flight_crawler_service = self._flight_crawler_service
 
         self._statistics_service = kwargs.get(
             'statistics_service',
@@ -132,6 +140,9 @@ class Bootstrapper:
             )
         )
 
+
+    def get_account_service(self) -> AccountService:
+        return self._account_service
 
     def get_flight_city_service(self):
         return self._flight_city_service

@@ -13,6 +13,7 @@ class CreateUserRequest(dataclasses.BaseModel):
     username: str
     mobile: str
     password: dataclasses.PasswordField
+    full_name: str | None = None
 
 
 class UpdateUserRequest(dataclasses.BaseModel):
@@ -26,6 +27,7 @@ class User(dataclasses.BaseModel):
     uid: dataclasses.UUIDField
     username: str | None = None
     mobile: str | None = None
+    full_name: str | None = None
     user_type: UserType | None = UserType.ORDINARY
     created_at: int | None = None
     modified_at: int | None = None
@@ -84,3 +86,55 @@ class CreateSessionRequest(dataclasses.BaseModel):
 class CreateAdminUserRequest(dataclasses.BaseModel):
     mobile: str
     password: dataclasses.PasswordField
+
+
+class SendOTPRequest(dataclasses.BaseModel):
+    mobile: str
+
+
+class SendOTPResponse(dataclasses.BaseModel):
+    success: bool
+    otp_uuid: dataclasses.UUIDField
+
+
+class VerifyOTPRequest(dataclasses.BaseModel):
+    mobile: str
+    code: str
+    otp_uuid: dataclasses.UUIDField
+
+
+class VerifyOTPResponse(dataclasses.BaseModel):
+    success: bool
+    otp_uuid: dataclasses.UUIDField
+
+
+class SignupRequest(dataclasses.BaseModel):
+    mobile: str
+    password: dataclasses.PasswordField
+    full_name: str
+    otp_uuid: dataclasses.UUIDField
+
+
+class LoginRequest(dataclasses.BaseModel):
+    mobile: str
+    password: str
+
+
+class ForgotPasswordRequest(dataclasses.BaseModel):
+    mobile: str
+
+
+class ResetPasswordRequest(dataclasses.BaseModel):
+    mobile: str
+    new_password: dataclasses.PasswordField
+    otp_uuid: dataclasses.UUIDField
+
+
+class ForgotPasswordResponse(dataclasses.BaseModel):
+    success: bool
+    otp_uuid: dataclasses.UUIDField | None = None
+
+
+class AuthResponse(dataclasses.BaseModel):
+    token: str
+    user: User
