@@ -18,11 +18,7 @@ class RedisClient:
                 socket_timeout=5,
                 retry_on_timeout=True,
                 health_check_interval=30,
-                max_connections=20,
-                connection_pool_kwargs={
-                    'max_connections': 20,
-                    'retry_on_timeout': True,
-                }
+                max_connections=20
             )
         return cls._client
 
