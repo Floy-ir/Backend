@@ -74,6 +74,7 @@ def get_detailed_memory_info():
 def main():
     """Main monitoring loop"""
     print("Starting memory monitoring for celery-beat containers...")
+    print("Memory limit: 2GB per container")
     print("Press Ctrl+C to stop")
     
     try:

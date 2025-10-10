@@ -1,0 +1,208 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: floy_backend:latest
+    restart: always
+    container_name: floy_backend
+    volumes:
+      - .:/app
+      - /data/static:/static/
+    env_file:
+      - .env
+    entrypoint: python3 manage.py
+    command: runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.5
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  db:
+    image: docker.arvancloud.ir/postgres:15
+    restart: always
+    container_name: floy_db
+    volumes:
+      - /data/pgdata:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      # PostgreSQL memory optimization
+      POSTGRES_SHARED_BUFFERS: 512MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_WORK_MEM: 4MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: 100
+      POSTGRES_WAL_BUFFERS: 16MB
+      POSTGRES_CHECKPOINT_SEGMENTS: 32
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
+    ports:
+      - "5432:5432"
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.2
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: docker.arvancloud.ir/redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - /data/redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.3
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: docker.arvancloud.ir/minio/minio:RELEASE.2023-11-01T01-57-10Z-cpuv1
+    container_name: floy_minio
+    restart: always
+    volumes:
+      - /data/minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9000
+      MINIO_SERVER_URL: http://localhost:9000
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.7
+    command: server /data --console-address ":9001" --address ":9000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  celery-beat-three:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: floy_backend:latest
+    container_name: celery-beat-three
+    restart: always
+    mem_limit: 2g
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - .:/app
+      - /data/celerybeat_data_three:/app/celerybeat-data
+    entrypoint: celery -A runner.schedule.celery
+    command: worker --beat --loglevel=INFO --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=256000
+    env_file:
+      - .env
+    environment:
+      - BEAT_ROLE=three_days
+      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      - C_FORCE_ROOT=true
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - MALLOC_TRIM_THRESHOLD_=131072
+      - MALLOC_MMAP_THRESHOLD_=131072
+      - MALLOC_MMAP_MAX_=65536
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.6
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  celery-beat-four:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: floy_backend:latest
+    container_name: celery-beat-four
+    restart: always
+    mem_limit: 2g
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - .:/app
+      - /data/celerybeat_data_four:/app/celerybeat-data
+    entrypoint: celery -A runner.schedule.celery
+    command: worker --beat --loglevel=INFO --concurrency=2 --max-tasks-per-child=50 --max-memory-per-child=256000
+    env_file:
+      - .env
+    environment:
+      - BEAT_ROLE=four_plus
+      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      - C_FORCE_ROOT=true
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - MALLOC_TRIM_THRESHOLD_=131072
+      - MALLOC_MMAP_THRESHOLD_=131072
+      - MALLOC_MMAP_MAX_=65536
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.8
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  rabbitmq:
+    image: docker.arvancloud.ir/rabbitmq:3.12-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.4
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    environment:
+      RABBITMQ_LOG_BASE: /var/log/rabbitmq
+      RABBITMQ_MNESIA_BASE: /var/lib/rabbitmq/mnesia
+      RABBITMQ_CONSUMER_TIMEOUT: 7200000
+    volumes:
+      - /data/rabbitmq/log:/var/log/rabbitmq
+      - /data/rabbitmq/mnesia:/var/lib/rabbitmq/mnesia
+
+volumes: {}
+
+networks:
+  floy_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
