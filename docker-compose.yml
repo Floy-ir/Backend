@@ -33,7 +33,12 @@ services:
     restart: always
     container_name: floy_db
     volumes:
+<<<<<<< HEAD
       - /data/pgdata:/var/lib/postgresql/data
+=======
+      - pgdata:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
+>>>>>>> f19f0c1ab94c2cd97c9efccecfb88ffb44ffe9f8
     env_file:
       - .env
     environment:
@@ -41,6 +46,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PORT: ${POSTGRES_PORT}
+      # PostgreSQL memory optimization
+      POSTGRES_SHARED_BUFFERS: 512MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_WORK_MEM: 4MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: 100
+      POSTGRES_WAL_BUFFERS: 16MB
+      POSTGRES_CHECKPOINT_SEGMENTS: 32
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
     ports:
       - "5432:5432"
     networks:
@@ -107,12 +121,27 @@ services:
       - .:/app
       - /data/celerybeat_data_three:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
+<<<<<<< HEAD
     command: worker --beat --loglevel=INFO --concurrency=1
     env_file:
       - .env
     environment:
       BEAT_ROLE: three_days
       BEAT_SCHEDULE_FILE: /app/celerybeat-data/celerybeat-schedule
+=======
+    command: worker --beat --loglevel=INFO --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=256000
+    env_file:
+      - .env
+    environment:
+      - BEAT_ROLE=three_days
+      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      - C_FORCE_ROOT=true
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - MALLOC_TRIM_THRESHOLD_=131072
+      - MALLOC_MMAP_THRESHOLD_=131072
+      - MALLOC_MMAP_MAX_=65536
+>>>>>>> f19f0c1ab94c2cd97c9efccecfb88ffb44ffe9f8
     networks:
       floy_network:
         ipv4_address: 172.20.0.6
@@ -123,6 +152,13 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
 
   celery-beat-four:
     build:
@@ -137,12 +173,27 @@ services:
       - .:/app
       - /data/celerybeat_data_four:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
+<<<<<<< HEAD
     command: worker --beat --loglevel=INFO --concurrency=1
     env_file:
       - .env
     environment:
       BEAT_ROLE: four_plus
       BEAT_SCHEDULE_FILE: /app/celerybeat-data/celerybeat-schedule
+=======
+    command: worker --beat --loglevel=INFO --concurrency=2 --max-tasks-per-child=50 --max-memory-per-child=256000
+    env_file:
+      - .env
+    environment:
+      - BEAT_ROLE=four_plus
+      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      - C_FORCE_ROOT=true
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - MALLOC_TRIM_THRESHOLD_=131072
+      - MALLOC_MMAP_THRESHOLD_=131072
+      - MALLOC_MMAP_MAX_=65536
+>>>>>>> f19f0c1ab94c2cd97c9efccecfb88ffb44ffe9f8
     networks:
       floy_network:
         ipv4_address: 172.20.0.8
@@ -153,6 +204,13 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
 
   rabbitmq:
     image: docker.arvancloud.ir/rabbitmq:3.12-management-alpine

@@ -57,7 +57,6 @@ INSTALLED_APPS = [
     'apps.flight_city',
     'apps.airlines',
     'apps.flights',
-    'apps.event_bus',
     'apps.accounts',
     'apps.flight_crawler',
     'apps.statistics'

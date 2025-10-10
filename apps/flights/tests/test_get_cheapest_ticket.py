@@ -1,6 +1,5 @@
 from django.test import TestCase
 from apps.accounts import interfaces as accounts_interfaces
-from apps.event_bus import interfaces as event_bus_interfaces
 from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from .fake_modules import *
 from .. import interfaces
@@ -19,18 +18,13 @@ class GetCheapestTicketTestCase(TestCase):
             airlines_service=FakeAirlineService(),
             cache_service=FakeCacheService(),
             flight_crawler_service=FakeFlightCrawlerService(),
-            event_bus=FakeEventBus(),
         )
 
         self.service = bootstrapper.get_flights_service()
-        self.service.on_event_or_command(
-            emitter_claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
-            event_or_command=event_bus_interfaces.EventOrCommand( 
+        self.service.create_flight(
+            flight_crawler_interfaces.CrawlResponse(
                 uid=str(uuid4()),
-                event_type='CRAWLED_FLIGHT',
-                payload=flight_crawler_interfaces.CrawlResponse(
-                    uid=str(uuid4()),
-                    crawl_timestamp=10,
+                crawl_timestamp=10,
                     origin='THR',
                     destination='MHD',
                     results=[
@@ -53,17 +47,12 @@ class GetCheapestTicketTestCase(TestCase):
                         )
                     ]
                 )
-            )
         )
 
-        self.service.on_event_or_command(
-            emitter_claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
-            event_or_command=event_bus_interfaces.EventOrCommand( 
+        self.service.create_flight(
+            flight_crawler_interfaces.CrawlResponse(
                 uid=str(uuid4()),
-                event_type='CRAWLED_FLIGHT',
-                payload=flight_crawler_interfaces.CrawlResponse(
-                    uid=str(uuid4()),
-                    crawl_timestamp=73800,
+                crawl_timestamp=73800,
                     origin='THR',
                     destination='MHD',
                     results=[
@@ -86,17 +75,12 @@ class GetCheapestTicketTestCase(TestCase):
                         ),
                     ]
                 )
-            )
         )
 
-        self.service.on_event_or_command(
-            emitter_claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
-            event_or_command=event_bus_interfaces.EventOrCommand( 
+        self.service.create_flight(
+            flight_crawler_interfaces.CrawlResponse(
                 uid=str(uuid4()),
-                event_type='CRAWLED_FLIGHT',
-                payload=flight_crawler_interfaces.CrawlResponse(
-                    uid=str(uuid4()),
-                    crawl_timestamp=160200,
+                crawl_timestamp=160200,
                     origin='THR',
                     destination='MHD',
                     results=[
@@ -119,7 +103,6 @@ class GetCheapestTicketTestCase(TestCase):
                         ),
                     ]
                 )
-            )
         )
                                 
 

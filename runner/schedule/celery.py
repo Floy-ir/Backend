@@ -57,6 +57,23 @@ app.conf.update(
     worker_prefetch_multiplier=1,
     task_acks_late=False,
     task_acks_on_success=False,
+    # Memory management settings
+    worker_max_memory_per_child=512000,  # 512MB per worker
+    worker_max_tasks_per_child=100,     # Restart worker after 100 tasks
+    worker_disable_rate_limits=True,
+    task_ignore_result=True,             # Don't store task results
+    result_expires=3600,                # Expire results after 1 hour
+    # Connection management
+    broker_connection_retry=True,
+    broker_connection_max_retries=3,
+    broker_heartbeat=30,
+    broker_pool_limit=5,
+    # Task execution settings
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
 )
 
 # Configure Celery Beat schedule based on BEAT_ROLE

@@ -1,18 +1,17 @@
 import logging
 import os
 
-from apps.event_bus.services import EventBus
 from apps.flight_crawler.services import FlightCrawlerService
 # externals
 from externals.s3.services import MinioClientFactory
 # apps interfaces
 from apps.accounts import interfaces as accounts_interfaces
 # apps services
+from apps.accounts.services import AccountService
 from apps.flight_city.services import FlightCityService
 from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
 from apps.flights.services import FlightsService
-from apps.event_bus.services import EventBus
 from apps.statistics.services import StatisticsService
 # libs services
 from libs.redis_client.services import CacheService
@@ -75,6 +74,11 @@ class Bootstrapper:
         )
 
         # apps
+        self._account_service = kwargs.get(
+            'account_service',
+            AccountService()
+        )
+
         self._file_storage_service = kwargs.get(
             'file_storage_service',
             FileStorageService(
@@ -100,11 +104,14 @@ class Bootstrapper:
             )
         )
 
-        self._event_bus = kwargs.get(
-            'event_bus',
-            EventBus(
-                claim=accounts_interfaces.Session.for_internal_app(uid='event_bus'),
-                date_time_utils=_date_time_utils
+        self._flights_service = kwargs.get(
+            'flights_service',
+            FlightsService(
+                claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
+                airlines_service=self._airlines_service,
+                date_time_utils=_date_time_utils,
+                flight_crawler_service=None,  # Will be set after crawler is created
+                cache_service=self._cache_service
             )
         )
 
@@ -113,7 +120,7 @@ class Bootstrapper:
             FlightCrawlerService(
                 claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
                 date_time_utils=_date_time_utils,
-                event_bus=self._event_bus,
+                flights_service=self._flights_service,
                 flight_city_service=self._flight_city_service,
                 file_storage_service=self._file_storage_service,
                 http_requester=_http_requester,
@@ -123,18 +130,8 @@ class Bootstrapper:
             )
         )
 
-
-        self._flights_service = kwargs.get(
-            'flights_service',
-            FlightsService(
-                claim=accounts_interfaces.Session.for_internal_app(uid='airlines_service'),
-                airlines_service=self._airlines_service,
-                event_bus=self._event_bus,
-                date_time_utils=_date_time_utils,
-                flight_crawler_service=self._flight_crawler_service,
-                cache_service=self._cache_service
-            )
-        )
+        # Update flights service with crawler service
+        self._flights_service.flight_crawler_service = self._flight_crawler_service
 
         self._statistics_service = kwargs.get(
             'statistics_service',
@@ -143,6 +140,9 @@ class Bootstrapper:
             )
         )
 
+
+    def get_account_service(self) -> AccountService:
+        return self._account_service
 
     def get_flight_city_service(self):
         return self._flight_city_service
@@ -164,9 +164,24 @@ class Bootstrapper:
     
     def get_statistics_service(self) -> StatisticsService:
         return self._statistics_service
-    
-    def get_event_bus(self) -> EventBus: 
-        return self._event_bus
+
+    def cleanup(self):
+        """Cleanup resources to prevent memory leaks"""
+        import gc
+        try:
+            # Close HTTP session if it exists
+            if hasattr(self._flight_crawler_service, 'http_requester') and hasattr(self._flight_crawler_service.http_requester, 'session'):
+                self._flight_crawler_service.http_requester.session.close()
+            
+            # Close Redis connection
+            from libs.redis_client.client import RedisClient
+            RedisClient.close_client()
+            
+            # Force garbage collection
+            gc.collect()
+            logger.info("Bootstrap cleanup completed")
+        except Exception as e:
+            logger.warning(f"Error during bootstrap cleanup: {e}")
 
 
 def get_bootstrapper(**kwargs) -> Bootstrapper:

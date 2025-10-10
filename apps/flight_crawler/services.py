@@ -6,13 +6,13 @@ import logging
 from apps.flight_city import interfaces as flight_city_interfaces
 from utils.date_time import interfaces as date_time_interfaces
 from apps.file_storage import interfaces as file_storage_interfaces
-from apps.event_bus import interfaces as event_bus_interfaces 
 from apps.airlines import interfaces as airline_interfaces
 from apps.accounts import interfaces as account_interfaces
 from libs.redis_client import interfaces as cache_interfaces
 from utils.http_requester import interfaces as http_requester_interfaces
 from apps.flight_crawler.models import Website, WebsiteRoute
 from . import interfaces
+from apps.flights import interfaces as flights_interfaces
 
 
 # Request structure constants
@@ -53,8 +53,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
     def __init__(self,
                  claim: account_interfaces.Session,
                  date_time_utils: date_time_interfaces.AbstractDateTime,
-                 event_bus: event_bus_interfaces.AbstractEventBus,
                  flight_city_service: flight_city_interfaces.AbstractFlightCityService,
+                 flights_service: flights_interfaces.AbstractFlightsService,
                  file_storage_service: file_storage_interfaces.AbstractFileStorageService,
                  http_requester: http_requester_interfaces.AbstractHTTPRequester,
                  cache_service: cache_interfaces.ICacheService,
@@ -65,13 +65,14 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.date_time = date_time_utils
         self.flight_city_service = flight_city_service
         self.airline_service = airline_service
-        self.event_bus = event_bus
+        self.flights_service = flights_service
         self.file_storage = file_storage_service
         self.cache_service = cache_service
         self.http_requester = http_requester
         self.max_adults = max_adults
 
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
+        import gc
         try:
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
             for i in range(from_days_ahead, to_days_ahead): 
@@ -96,13 +97,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                             )
                             
                             flights.extend(self._crawl(request=request))
-                        
-                            self.event_bus.emit(
-                                caller=self.claim,
-                                event_or_command=event_bus_interfaces.EventOrCommand(
-                                    uid=str(uuid4()),
-                                    event_type='CRAWLED_FLIGHT',
-                                    payload=interfaces.CrawlResponse(
+                            self.flights_service.create_flight(
+                                request=interfaces.CrawlResponse(
                                         uid=crawl_uid,
                                         crawl_timestamp=target_timestamp,
                                         origin=origin,
@@ -110,15 +106,24 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                                         results=flights
                                     )
                                 )
-                            )
+                            
+                            # Clear flights list to free memory
+                            flights.clear()
+                            del flights
                             
                         except Exception as e:
                             logger.error(f"crawled flights for {origin} -> {destination} error ==>> {e}")
-                            continue                  
+                            continue
+                        
+                        # Force garbage collection after each route
+                        gc.collect()
                     
         except Exception as e:
             logger.error(f"Error in crawl_scheduled_flights: {str(e)}")
             raise
+        finally:
+            # Final cleanup
+            gc.collect()
 
     def _crawl(self, request: interfaces.CrawlRequest) -> List[interfaces.Flight]:
         """
@@ -208,6 +213,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         return result
 
     def _fetch_flights(self, source: WebsiteRoute, search_params: interfaces.CrawlRequest) -> List[interfaces.Flight]:
+        import gc
         method = source.website.request_payload_structure["method"]
         request_structure = source.website.request_payload_structure
         response_parsing_rules = source.website.response_parsing_rules
@@ -390,6 +396,14 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 time.sleep(3)
 
         result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
+        
+        # Cleanup to prevent memory leaks
+        all_flights.clear()
+        del all_flights
+        if 'response_data' in locals():
+            del response_data
+        gc.collect()
+        
         return result
 
     def _format_inputs(self, request_structure, search_params: interfaces.CrawlRequest):

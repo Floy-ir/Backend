@@ -1,7 +1,6 @@
 from uuid import uuid4
 from django.test import TestCase
 from apps.accounts import interfaces as accounts_interfaces
-from apps.event_bus import interfaces as event_bus_interfaces
 from apps.flight_crawler import interfaces as flight_crawler_interfaces
 from .fake_modules import *
 from .. import interfaces
@@ -20,7 +19,6 @@ class EventCommandTestCase(TestCase):
             airlines_service=FakeAirlineService(),
             cache_service=FakeCacheService(),
             flight_crawler_service=FakeFlightCrawlerService(),
-            event_bus=FakeEventBus(),
         )
 
         self.service = bootstrapper.get_flights_service()
@@ -29,16 +27,12 @@ class EventCommandTestCase(TestCase):
 
         print(f"\n\ncurrent_timestamp ==>> {self.current_timestamp}\n\n")
         
-        self.service.on_event_or_command(
-            emitter_claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
-            event_or_command=event_bus_interfaces.EventOrCommand(
+        self.service.create_flight(
+            flight_crawler_interfaces.CrawlResponse(
                 uid=str(uuid4()),
-                event_type='CRAWLED_FLIGHT',
-                payload=flight_crawler_interfaces.CrawlResponse(
-                    uid=str(uuid4()),
-                    crawl_timestamp=current_timestamp,
-                    origin='THR',
-                    destination='MHD',
+                crawl_timestamp=self.current_timestamp,
+                origin='THR',
+                destination='MHD',
                     results=[
                         flight_crawler_interfaces.Flight(
                             airline='kish',
@@ -160,19 +154,13 @@ class EventCommandTestCase(TestCase):
                             base_redirect_url="pate.com"
                         ),
                     ]
-
                 )
-            )
         )
 
-        self.service.on_event_or_command(
-            emitter_claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
-            event_or_command=event_bus_interfaces.EventOrCommand(
+        self.service.create_flight(
+            flight_crawler_interfaces.CrawlResponse(
                 uid=str(uuid4()),
-                event_type='CRAWLED_FLIGHT',
-                payload=flight_crawler_interfaces.CrawlResponse(
-                    uid=str(uuid4()),
-                    crawl_timestamp=current_timestamp,
+                crawl_timestamp=self.current_timestamp,
                     origin='THR',
                     destination='KIH',
                     results=[
@@ -194,19 +182,13 @@ class EventCommandTestCase(TestCase):
                             base_redirect_url="alibaba.ir"
                         ),
                     ]
-
                 )
-            )
         )
 
-        self.service.on_event_or_command(
-            emitter_claim=accounts_interfaces.Session.for_internal_app(uid='flight_crawler_service'),
-            event_or_command=event_bus_interfaces.EventOrCommand(
+        self.service.create_flight(
+            flight_crawler_interfaces.CrawlResponse(
                 uid=str(uuid4()),
-                event_type='CRAWLED_FLIGHT',
-                payload=flight_crawler_interfaces.CrawlResponse(
-                    uid=str(uuid4()),
-                    crawl_timestamp=current_timestamp,
+                crawl_timestamp=self.current_timestamp,
                     origin='THR',
                     destination='TBZ',
                     results=[
@@ -245,9 +227,7 @@ class EventCommandTestCase(TestCase):
                             base_redirect_url="alibaba.ir"
                         ),
                     ]
-
                 )
-            )
         )
 
 

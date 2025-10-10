@@ -55,3 +55,28 @@ class TerminatedSessionException(BadRequest):
 class WrongPasswordException(BadRequest):
     def __init__(self):
         super().__init__('wrong password entered')
+
+
+class InvalidOTPException(BadRequest):
+    def __init__(self):
+        super().__init__('invalid or expired OTP code')
+
+
+class OTPExpiredException(BadRequest):
+    def __init__(self):
+        super().__init__('OTP code has expired')
+
+
+class OTPAlreadyUsedException(BadRequest):
+    def __init__(self):
+        super().__init__('OTP code has already been used')
+
+
+class OTPVerificationRequiredException(BadRequest):
+    def __init__(self):
+        super().__init__('OTP verification required before proceeding')
+
+
+class SMSServiceFailedException(BadRequest):
+    def __init__(self):
+        super().__init__('Failed to send SMS')
