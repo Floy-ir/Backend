@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   backend:
     build:
@@ -8,7 +10,7 @@ services:
     container_name: floy_backend
     volumes:
       - .:/app
-      - ./volumes/static:/static/
+      - /data/static:/static/
     env_file:
       - .env
     entrypoint: python3 manage.py
@@ -31,7 +33,7 @@ services:
     restart: always
     container_name: floy_db
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - /data/pgdata:/var/lib/postgresql/data
     env_file:
       - .env
     environment:
@@ -57,7 +59,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - /data/redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
     networks:
       floy_network:
@@ -73,7 +75,7 @@ services:
     container_name: floy_minio
     restart: always
     volumes:
-      - minio_data:/data
+      - /data/minio_data:/data
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -98,17 +100,19 @@ services:
       dockerfile: Dockerfile
     image: floy_backend:latest
     container_name: celery-beat-three
+    restart: always
+    mem_limit: 4g
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - .:/app
-      - celerybeat_data_three:/app/celerybeat-data
+      - /data/celerybeat_data_three:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
-    command: worker --beat --loglevel=DEBUG
+    command: worker --beat --loglevel=INFO --concurrency=1
     env_file:
       - .env
     environment:
-      - BEAT_ROLE=three_days
-      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      BEAT_ROLE: three_days
+      BEAT_SCHEDULE_FILE: /app/celerybeat-data/celerybeat-schedule
     networks:
       floy_network:
         ipv4_address: 172.20.0.6
@@ -126,17 +130,19 @@ services:
       dockerfile: Dockerfile
     image: floy_backend:latest
     container_name: celery-beat-four
+    restart: always
+    mem_limit: 4g
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - .:/app
-      - celerybeat_data_four:/app/celerybeat-data
+      - /data/celerybeat_data_four:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
-    command: worker --beat --loglevel=DEBUG
+    command: worker --beat --loglevel=INFO --concurrency=1
     env_file:
       - .env
     environment:
-      - BEAT_ROLE=four_plus
-      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      BEAT_ROLE: four_plus
+      BEAT_SCHEDULE_FILE: /app/celerybeat-data/celerybeat-schedule
     networks:
       floy_network:
         ipv4_address: 172.20.0.8
@@ -151,6 +157,7 @@ services:
   rabbitmq:
     image: docker.arvancloud.ir/rabbitmq:3.12-management-alpine
     container_name: rabbitmq
+    restart: unless-stopped
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -162,13 +169,15 @@ services:
       interval: 30s
       timeout: 30s
       retries: 3
+    environment:
+      RABBITMQ_LOG_BASE: /var/log/rabbitmq
+      RABBITMQ_MNESIA_BASE: /var/lib/rabbitmq/mnesia
+      RABBITMQ_CONSUMER_TIMEOUT: 7200000
+    volumes:
+      - /data/rabbitmq/log:/var/log/rabbitmq
+      - /data/rabbitmq/mnesia:/var/lib/rabbitmq/mnesia
 
-volumes:
-  pgdata:
-  minio_data:
-  redis_data:
-  celerybeat_data_three:
-  celerybeat_data_four:
+volumes: {}
 
 networks:
   floy_network:
