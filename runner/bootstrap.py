@@ -165,6 +165,24 @@ class Bootstrapper:
     def get_statistics_service(self) -> StatisticsService:
         return self._statistics_service
 
+    def cleanup(self):
+        """Cleanup resources to prevent memory leaks"""
+        import gc
+        try:
+            # Close HTTP session if it exists
+            if hasattr(self._flight_crawler_service, 'http_requester') and hasattr(self._flight_crawler_service.http_requester, 'session'):
+                self._flight_crawler_service.http_requester.session.close()
+            
+            # Close Redis connection
+            from libs.redis_client.client import RedisClient
+            RedisClient.close_client()
+            
+            # Force garbage collection
+            gc.collect()
+            logger.info("Bootstrap cleanup completed")
+        except Exception as e:
+            logger.warning(f"Error during bootstrap cleanup: {e}")
+
 
 def get_bootstrapper(**kwargs) -> Bootstrapper:
         bootstrapper = Bootstrapper(**kwargs)
