@@ -49,3 +49,4 @@ def test_celery():
     finally:
         if bootstrapper:
             bootstrapper.cleanup()
+
