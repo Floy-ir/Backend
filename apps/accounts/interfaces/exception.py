@@ -70,3 +70,13 @@ class OTPExpiredException(BadRequest):
 class OTPAlreadyUsedException(BadRequest):
     def __init__(self):
         super().__init__('OTP code has already been used')
+
+
+class OTPVerificationRequiredException(BadRequest):
+    def __init__(self):
+        super().__init__('OTP verification required before proceeding')
+
+
+class SMSServiceFailedException(BadRequest):
+    def __init__(self):
+        super().__init__('Failed to send SMS')

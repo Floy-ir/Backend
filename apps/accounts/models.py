@@ -23,9 +23,11 @@ class User(AbstractUser):
 class OTP(models.Model):
     mobile = models.CharField(max_length=32)
     code = models.CharField(max_length=6)
+    uuid = models.CharField(max_length=128, unique=True)
     created_at = models.PositiveBigIntegerField()
     expires_at = models.PositiveBigIntegerField()
     is_used = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
     
     @classmethod
     def generate_code(cls):
