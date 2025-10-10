@@ -3,11 +3,33 @@ import requests
 import logging
 from . import interfaces
 import time
+import gc
 
 logger = logging.getLogger(__name__)
 
 
 class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
+    def __init__(self):
+        # Create a session for connection pooling
+        self.session = requests.Session()
+        # Configure session for better memory management
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36'
+        })
+        # Set connection pool limits
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=20,
+            max_retries=3,
+            pool_block=False
+        )
+        self.session.mount('http://', adapter)
+        self.session.mount('https://', adapter)
+
+    def __del__(self):
+        """Cleanup session when object is destroyed"""
+        if hasattr(self, 'session'):
+            self.session.close()
 
     def request(self, method: str, url: str, data=None, retry_statuses: List[int] = None,
                 parse_response_as_json: bool = True, timeout: Tuple[int, int] = (10, 30),
@@ -21,7 +43,7 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
         logger.debug(f"Requesting URL: {url}")
 
         try:
-            response = requests.request(
+            response = self.session.request(
                 method=method,
                 url=url,
                 data=data,
@@ -46,7 +68,7 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
                 while retry_count < max_retries:
                     time.sleep(retry_delay)
                     try:
-                        poll_response = requests.get(
+                        poll_response = self.session.get(
                             url=location,
                             timeout=timeout,
                             headers=kwargs.get("headers", None),
@@ -64,7 +86,7 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
                     time.sleep(retry_delay)
                     logger.debug(f"error for {retry_count} st time")
                     try:
-                        retry_response = requests.request(
+                        retry_response = self.session.request(
                             method=method,
                             url=url,
                             data=data,

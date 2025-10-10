@@ -113,7 +113,7 @@ services:
       - .:/app
       - celerybeat_data_three:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
-    command: worker --beat --loglevel=INFO --concurrency=1
+    command: worker --beat --loglevel=INFO --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=256000
     env_file:
       - .env
     environment:
@@ -121,6 +121,10 @@ services:
       - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
       - C_FORCE_ROOT=true
       - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - MALLOC_TRIM_THRESHOLD_=131072
+      - MALLOC_MMAP_THRESHOLD_=131072
+      - MALLOC_MMAP_MAX_=65536
     networks:
       floy_network:
         ipv4_address: 172.20.0.6
@@ -131,6 +135,13 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
 
   celery-beat-four:
     build:
@@ -143,7 +154,7 @@ services:
       - .:/app
       - celerybeat_data_four:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
-    command: worker --beat --loglevel=INFO --concurrency=2 --max-tasks-per-child=1000 --max-memory-per-child=512000
+    command: worker --beat --loglevel=INFO --concurrency=2 --max-tasks-per-child=50 --max-memory-per-child=256000
     env_file:
       - .env
     environment:
@@ -151,6 +162,10 @@ services:
       - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
       - C_FORCE_ROOT=true
       - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - MALLOC_TRIM_THRESHOLD_=131072
+      - MALLOC_MMAP_THRESHOLD_=131072
+      - MALLOC_MMAP_MAX_=65536
     networks:
       floy_network:
         ipv4_address: 172.20.0.8
@@ -161,6 +176,13 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
 
   rabbitmq:
     image: docker.arvancloud.ir/rabbitmq:3.12-management-alpine

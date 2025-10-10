@@ -72,6 +72,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.max_adults = max_adults
 
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
+        import gc
         try:
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
             for i in range(from_days_ahead, to_days_ahead): 
@@ -106,13 +107,23 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                                     )
                                 )
                             
+                            # Clear flights list to free memory
+                            flights.clear()
+                            del flights
+                            
                         except Exception as e:
                             logger.error(f"crawled flights for {origin} -> {destination} error ==>> {e}")
-                            continue                  
+                            continue
+                        
+                        # Force garbage collection after each route
+                        gc.collect()
                     
         except Exception as e:
             logger.error(f"Error in crawl_scheduled_flights: {str(e)}")
             raise
+        finally:
+            # Final cleanup
+            gc.collect()
 
     def _crawl(self, request: interfaces.CrawlRequest) -> List[interfaces.Flight]:
         """
@@ -202,6 +213,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         return result
 
     def _fetch_flights(self, source: WebsiteRoute, search_params: interfaces.CrawlRequest) -> List[interfaces.Flight]:
+        import gc
         method = source.website.request_payload_structure["method"]
         request_structure = source.website.request_payload_structure
         response_parsing_rules = source.website.response_parsing_rules
@@ -384,6 +396,14 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 time.sleep(3)
 
         result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
+        
+        # Cleanup to prevent memory leaks
+        all_flights.clear()
+        del all_flights
+        if 'response_data' in locals():
+            del response_data
+        gc.collect()
+        
         return result
 
     def _format_inputs(self, request_structure, search_params: interfaces.CrawlRequest):
