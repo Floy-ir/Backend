@@ -65,9 +65,7 @@ app.conf.update(
     result_expires=3600,                # Expire results after 1 hour
     # Connection management
     broker_connection_retry=True,
-    broker_connection_max_retries=3,
     broker_heartbeat=30,
-    broker_pool_limit=5,
     # Task execution settings
     task_serializer='json',
     accept_content=['json'],
