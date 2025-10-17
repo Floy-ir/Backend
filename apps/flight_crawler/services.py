@@ -251,6 +251,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 try:
                     if method == GET_METHOD:
                         logger.info(f"Making GET request to {url} (Attempt {retry_count + 1}/{max_retries})")
+                        print(f"🔍 GET Request Payload - URL: {url}")
+                        print(f"🔍 GET Request Payload - Headers: {headers}")
+                        print(f"🔍 GET Request Payload - Params: {params}")
                         response = self.http_requester.get(
                             url=url,
                             headers=headers,
@@ -258,13 +261,17 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         )
                     else:  # POST method
                         logger.info(f"Making POST request to {url} (Attempt {retry_count + 1}/{max_retries})")
+                        print(f"🔍 POST Request Payload - URL: {url}")
+                        print(f"🔍 POST Request Payload - Headers: {headers}")
                         if request_structure.get("way") == "params":
+                            print(f"🔍 POST Request Payload - Params: {params}")
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
                                 params=params
                             )
                         else:
+                            print(f"🔍 POST Request Payload - JSON Body: {json}")
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
@@ -344,6 +351,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     search_id_request_params = self._format_inputs(search_id_request_structure, search_id_request_params)
 
                     logger.info(f"Params: {search_id_request_params}")
+                    print(f"🔍 Search ID GET Request Payload - URL: {search_id_request_structure[API_URL]}")
+                    print(f"🔍 Search ID GET Request Payload - Headers: {base_headers}")
+                    print(f"🔍 Search ID GET Request Payload - Params: {search_id_request_params}")
 
                     response = self.http_requester.get(
                         url=search_id_request_structure[API_URL],
@@ -354,6 +364,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 else:
                     logger.info(f"Making GET request to {request_structure[API_URL]}/{search_id}")
                     logger.info(f"Headers: {request_structure[HEADERS]}")
+                    print(f"🔍 Search ID GET Request Payload - URL: {search_id_request_structure[API_URL]}/{search_id}")
+                    print(f"🔍 Search ID GET Request Payload - Headers: {base_headers}")
                     
                     response = self.http_requester.get(
                         url=search_id_request_structure[API_URL] + '/' + search_id,

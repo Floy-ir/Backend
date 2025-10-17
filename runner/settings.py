@@ -59,7 +59,8 @@ INSTALLED_APPS = [
     'apps.flights',
     'apps.accounts',
     'apps.flight_crawler',
-    'apps.statistics'
+    'apps.statistics',
+    'apps.ai_agent'
 ]
 
 MIDDLEWARE = [
@@ -251,3 +252,6 @@ SECURITY WARNING: don't run with use_x_forwarded_host turned off in production!
 """
 USE_X_FORWARDED_HOST = os.getenv("USE_X_FORWARDED_HOST", "True").lower() == "true"
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# OpenAI Configuration
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
