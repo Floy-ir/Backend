@@ -79,3 +79,15 @@ class ConversationContext(dataclasses.BaseModel):
     conversation_history: List[ConversationMessage] = []
     system_instructions: Optional[str] = None
     last_updated: datetime = datetime.now()
+
+
+class ChatRequest(dataclasses.BaseModel):
+    """Request for chat endpoint"""
+    message: str
+    session_id: Optional[str] = None
+
+
+class ConversationRequest(dataclasses.BaseModel):
+    """Request for conversation endpoint"""
+    messages: List[ConversationMessage]
+    system_instructions: Optional[str] = None

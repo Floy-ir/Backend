@@ -1,22 +1,23 @@
 import logging
 import json
 import openai
+import httpx
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 import re
 
 from . import interfaces
+from .interfaces.abstractions import AbstractAIAgentService
 from apps.flights import interfaces as flights_interfaces
 from apps.flight_city import interfaces as cities_interfaces
 from apps.airlines import interfaces as airlines_interfaces
 from apps.accounts import interfaces as accounts_interfaces
 from utils.date_time import interfaces as date_time_interfaces
-from runner.bootstrap import get_bootstrapper
 
 logger = logging.getLogger(__name__)
 
 
-class AIAgentService(interfaces.AbstractAIAgentService):
+class AIAgentService(AbstractAIAgentService):
     """AI Agent service for flight booking assistance"""
     
     def __init__(
@@ -26,14 +27,29 @@ class AIAgentService(interfaces.AbstractAIAgentService):
         cities_service: cities_interfaces.AbstractFlightCityService,
         airlines_service: airlines_interfaces.AbstractAirlineService,
         date_time_utils: date_time_interfaces.AbstractDateTime,
-        openai_api_key: str
+        openai_api_key: str,
+        proxy_url: Optional[str] = None
     ):
         self.claim = claim
         self.flights_service = flights_service
         self.cities_service = cities_service
         self.airlines_service = airlines_service
         self.date_time_utils = date_time_utils
-        self.openai_client = openai.OpenAI(api_key=openai_api_key)
+        
+        # Initialize OpenAI client with optional proxy
+        if proxy_url:
+            logger.info(f"Initializing OpenAI client with proxy: {proxy_url}")
+            # Create httpx client with proxy configuration
+            http_client = httpx.Client(
+                proxies={"http://": proxy_url, "https://": proxy_url}
+            )
+            self.openai_client = openai.OpenAI(
+                api_key=openai_api_key,
+                http_client=http_client
+            )
+        else:
+            logger.info("Initializing OpenAI client without proxy")
+            self.openai_client = openai.OpenAI(api_key=openai_api_key)
         
         # OpenAI function calling schema
         self.functions = [
@@ -217,6 +233,8 @@ class AIAgentService(interfaces.AbstractAIAgentService):
             
         except Exception as e:
             logger.error(f"Error extracting travel intent: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Exception details: {e}")
             return interfaces.TravelIntent()
 
     def process_conversation(self, messages: List[interfaces.ConversationMessage], system_instructions: Optional[str] = None) -> interfaces.AIAgentResponse:

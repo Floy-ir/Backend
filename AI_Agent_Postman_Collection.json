@@ -1,0 +1,391 @@
+{
+  "info": {
+    "name": "AI Agent API Collection",
+    "description": "Comprehensive API collection for testing AI Agent service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Chat Endpoint",
+      "item": [
+        {
+          "name": "Basic Flight Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"I want to fly from Tehran to Mashhad tomorrow\",\n  \"session_id\": \"test-session-1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "chat", ""]
+            }
+          }
+        },
+        {
+          "name": "Missing Information",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"I want to book a flight\",\n  \"session_id\": \"test-session-2\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "chat", ""]
+            }
+          }
+        },
+        {
+          "name": "Business Class Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"I need business class flights from THR to MHD on January 20th, 2024\",\n  \"session_id\": \"test-session-3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "chat", ""]
+            }
+          }
+        },
+        {
+          "name": "Budget Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Find me the cheapest flights from Tehran to Isfahan next week\",\n  \"session_id\": \"test-session-4\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "chat", ""]
+            }
+          }
+        },
+        {
+          "name": "Round Trip Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"I want a round trip from Tehran to Shiraz, leaving January 25th and returning January 30th\",\n  \"session_id\": \"test-session-5\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "chat", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Conversation Endpoint",
+      "item": [
+        {
+          "name": "Multi-turn Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"I need to travel from Tehran to Mashhad\",\n      \"timestamp\": \"2024-01-15T10:01:00\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"I can help you find flights from Tehran to Mashhad. When would you like to travel?\",\n      \"timestamp\": \"2024-01-15T10:01:30\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Next Friday, business class preferred\",\n      \"timestamp\": \"2024-01-15T10:02:00\"\n    }\n  ],\n  \"system_instructions\": \"You are a helpful flight booking assistant. Always provide prices in Iranian Rial and mention airline names in Persian when available.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/conversation/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "conversation", ""]
+            }
+          }
+        },
+        {
+          "name": "Budget Specialist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Find me cheap flights from THR to MHD next week\",\n      \"timestamp\": \"2024-01-15T10:00:00\"\n    }\n  ],\n  \"system_instructions\": \"You are a budget travel specialist. Always recommend the cheapest options first and be enthusiastic about saving money!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/conversation/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "conversation", ""]
+            }
+          }
+        },
+        {
+          "name": "Luxury Travel Advisor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"I want to travel from Tehran to Isfahan\",\n      \"timestamp\": \"2024-01-15T10:00:00\"\n    }\n  ],\n  \"system_instructions\": \"You are a luxury travel advisor. Focus on premium and business class options, emphasize comfort and service quality, and use sophisticated language.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/conversation/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "conversation", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Direct Search Endpoints",
+      "item": [
+        {
+          "name": "Flight Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": \"THR\",\n  \"destination\": \"MHD\",\n  \"departure_timestamp_gte\": 1705276800,\n  \"departure_timestamp_lte\": 1705363200,\n  \"seat_classes\": [\"Economy\"],\n  \"max_price\": 1000.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/search-flights/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "search-flights", ""]
+            }
+          }
+        },
+        {
+          "name": "Cheapest Flights",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": \"THR\",\n  \"destination\": \"MHD\",\n  \"reference_date\": \"2024-01-20\",\n  \"forward_days\": 7,\n  \"backward_days\": 7\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/cheapest-flights/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "cheapest-flights", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lookup Endpoints",
+      "item": [
+        {
+          "name": "Search Cities - Tehran",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ai-agent/search-cities/?query=tehran",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "search-cities", ""],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "tehran"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Cities - All",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ai-agent/search-cities/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "search-cities", ""]
+            }
+          }
+        },
+        {
+          "name": "Search Airlines - Iran",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ai-agent/search-airlines/?query=iran",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "search-airlines", ""],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "iran"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Airlines - All",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ai-agent/search-airlines/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "search-airlines", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Utility Endpoints",
+      "item": [
+        {
+          "name": "Function Schema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ai-agent/function-schema/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "function-schema", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Handling Tests",
+      "item": [
+        {
+          "name": "Empty Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "chat", ""]
+            }
+          }
+        },
+        {
+          "name": "Invalid JSON",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "invalid json"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/chat/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "chat", ""]
+            }
+          }
+        },
+        {
+          "name": "Missing Required Fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai-agent/conversation/",
+              "host": ["{{base_url}}"],
+              "path": ["ai-agent", "conversation", ""]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ]
+}
