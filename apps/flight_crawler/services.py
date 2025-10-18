@@ -13,6 +13,7 @@ from utils.http_requester import interfaces as http_requester_interfaces
 from apps.flight_crawler.models import Website, WebsiteRoute
 from . import interfaces
 from apps.flights import interfaces as flights_interfaces
+from utils.proxy_manager.services import ProxyManagerService
 
 
 # Request structure constants
@@ -59,6 +60,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                  http_requester: http_requester_interfaces.AbstractHTTPRequester,
                  cache_service: cache_interfaces.ICacheService,
                  airline_service: airline_interfaces.AbstractAirlineService,
+                 proxy_manager: ProxyManagerService = None,
+                 use_proxy: bool = True,
                  max_adults: int = 1,
                  ):
         self.claim = claim
@@ -69,6 +72,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.file_storage = file_storage_service
         self.cache_service = cache_service
         self.http_requester = http_requester
+        self.proxy_manager = proxy_manager or ProxyManagerService()
+        self.use_proxy = use_proxy
         self.max_adults = max_adults
 
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
@@ -257,7 +262,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         response = self.http_requester.get(
                             url=url,
                             headers=headers,
-                            params=params
+                            params=params,
+                            use_proxy=self.use_proxy,
+                            proxy_manager=self.proxy_manager
                         )
                     else:  # POST method
                         logger.info(f"Making POST request to {url} (Attempt {retry_count + 1}/{max_retries})")
@@ -268,14 +275,18 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
-                                params=params
+                                params=params,
+                                use_proxy=self.use_proxy,
+                                proxy_manager=self.proxy_manager
                             )
                         else:
                             print(f"🔍 POST Request Payload - JSON Body: {json}")
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
-                                json=json
+                                json=json,
+                                use_proxy=self.use_proxy,
+                                proxy_manager=self.proxy_manager
                             )
 
                     if response.status_code == 200:
@@ -359,6 +370,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         url=search_id_request_structure[API_URL],
                         headers=base_headers,
                         params=search_id_request_params,
+                        use_proxy=self.use_proxy,
+                        proxy_manager=self.proxy_manager
                     )
 
                 else:
@@ -370,6 +383,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     response = self.http_requester.get(
                         url=search_id_request_structure[API_URL] + '/' + search_id,
                         headers=base_headers,
+                        use_proxy=self.use_proxy,
+                        proxy_manager=self.proxy_manager
                     )
             else:
                 logger.info(f"Making POST request to {search_id_request_structure[API_URL]}")
@@ -384,7 +399,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 response = self.http_requester.post(
                     url=search_id_request_structure[API_URL],
                     headers=base_headers,
-                    json=search_id_body
+                    json=search_id_body,
+                    use_proxy=self.use_proxy,
+                    proxy_manager=self.proxy_manager
                 )
 
             if response.status_code != 200:

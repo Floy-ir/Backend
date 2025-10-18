@@ -1,5 +1,5 @@
 import abc
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict, Any
 from pydantic import BaseModel
 from libs.exceptions import ServiceExceptions
 
@@ -8,6 +8,8 @@ class RequesterResponse(BaseModel):
     status_code: int
     content_bytes: bytes = None
     content_json: object = None
+    proxy_used: Optional[str] = None
+    response_time: float = 0.0
 
 
 class HttpRequesterBaseException(ServiceExceptions):
@@ -34,7 +36,8 @@ class RequestException(HttpRequesterBaseException):
 class AbstractHTTPRequester(abc.ABC):
 
     def request(self, method: str, url: str, data=None, retry_statuses: List[int] = None,
-                parse_response_as_json: bool = True, timeout: Tuple[int, int] = (10, 301), **kwargs) -> RequesterResponse:
+                parse_response_as_json: bool = True, timeout: Tuple[int, int] = (10, 301), 
+                use_proxy: bool = False, proxy_manager=None, **kwargs) -> RequesterResponse:
         """requests to base_addresses in turn and returns the first non to-retry response.
 
         Args:
@@ -44,6 +47,8 @@ class AbstractHTTPRequester(abc.ABC):
             retry_statuses (List[int], optional): if request did not succeed or the response status code was one of these, the requester will try next base address. defaults to [500, 502, 503, 504]
             parse_response_as_json (bool, optional): if True, the requester will parse response in case of 200 or 201 response. Defaults to True.
             timeout (Tuple[int, int], optional): connect timeout and read timeout respectively
+            use_proxy (bool, optional): if True, the requester will use proxy rotation. Defaults to False.
+            proxy_manager (AbstractProxyManager, optional): proxy manager instance for handling proxy rotation. Defaults to None.
 
         Raises:
             RequestException: None of base addresses returned a non to-retry response
