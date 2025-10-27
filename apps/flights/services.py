@@ -405,11 +405,23 @@ class FlightsService(interfaces.AbstractFlightsService):
 
     def _convert_flight_to_dto(self, flight: Flight) -> interfaces.FlightDTO:
         websites = []
+        website_price_map = {}
         for website in flight.websites.filter(is_valid=True):
-            if website.uid in self.website_details:
-                websites.append(self._convert_website_to_dto(website))
-            else:
+            if website.uid not in self.website_details:
                 logger.warning(f"Website details not found for UID: {website.uid}")
+                continue 
+
+            price_key = (website.uid, website.adult_price)
+            
+            if price_key in website_price_map:
+                logger.debug(f"Skipping duplicate website {website.uid} with adult_price {website.adult_price}")
+                continue
+            
+            website_price_map[price_key] = True
+
+            website_dto = self._convert_website_to_dto(website)
+            websites.append(website_dto)
+
         return interfaces.FlightDTO(
             airline=interfaces.AirlineDetail(
                 uid=flight.airline,
@@ -432,7 +444,7 @@ class FlightsService(interfaces.AbstractFlightsService):
                 name_fa=self.website_details[flight.cheapest_website_uid].name_fa,
                 image=self.website_details[flight.cheapest_website_uid].logo
             ),
-            websites=[self._convert_website_to_dto(website) for website in flight.websites.filter(is_valid=True)],
+            websites=websites,
         )
 
     @staticmethod
