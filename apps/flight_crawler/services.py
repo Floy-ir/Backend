@@ -222,6 +222,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         method = source.website.request_payload_structure["method"]
         request_structure = source.website.request_payload_structure
         response_parsing_rules = source.website.response_parsing_rules
+        
+        # Check if this specific website should use proxy
+        website_use_proxy = source.website.use_proxy
 
         if source.config and CITY_MAPPING in source.config:
             city_mapping = source.config[CITY_MAPPING]
@@ -256,27 +259,31 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 try:
                     if method == GET_METHOD:
                         logger.info(f"Making GET request to {url} (Attempt {retry_count + 1}/{max_retries})")
+                        logger.info(f"Using proxy: {website_use_proxy}")
                         print(f"🔍 GET Request Payload - URL: {url}")
                         print(f"🔍 GET Request Payload - Headers: {headers}")
                         print(f"🔍 GET Request Payload - Params: {params}")
+                        print(f"🌐 Using Proxy: {website_use_proxy}")
                         response = self.http_requester.get(
                             url=url,
                             headers=headers,
                             params=params,
-                            use_proxy=self.use_proxy,
+                            use_proxy=website_use_proxy,
                             proxy_manager=self.proxy_manager
                         )
                     else:  # POST method
                         logger.info(f"Making POST request to {url} (Attempt {retry_count + 1}/{max_retries})")
+                        logger.info(f"Using proxy: {website_use_proxy}")
                         print(f"🔍 POST Request Payload - URL: {url}")
                         print(f"🔍 POST Request Payload - Headers: {headers}")
+                        print(f"🌐 Using Proxy: {website_use_proxy}")
                         if request_structure.get("way") == "params":
                             print(f"🔍 POST Request Payload - Params: {params}")
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
                                 params=params,
-                                use_proxy=self.use_proxy,
+                                use_proxy=website_use_proxy,
                                 proxy_manager=self.proxy_manager
                             )
                         else:
@@ -285,7 +292,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                                 url=url,
                                 headers=headers,
                                 json=json,
-                                use_proxy=self.use_proxy,
+                                use_proxy=website_use_proxy,
                                 proxy_manager=self.proxy_manager
                             )
 
@@ -370,7 +377,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                         url=search_id_request_structure[API_URL],
                         headers=base_headers,
                         params=search_id_request_params,
-                        use_proxy=self.use_proxy,
+                        use_proxy=website_use_proxy,
                         proxy_manager=self.proxy_manager
                     )
 
@@ -383,7 +390,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     response = self.http_requester.get(
                         url=search_id_request_structure[API_URL] + '/' + search_id,
                         headers=base_headers,
-                        use_proxy=self.use_proxy,
+                        use_proxy=website_use_proxy,
                         proxy_manager=self.proxy_manager
                     )
             else:
@@ -400,7 +407,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     url=search_id_request_structure[API_URL],
                     headers=base_headers,
                     json=search_id_body,
-                    use_proxy=self.use_proxy,
+                    use_proxy=website_use_proxy,
                     proxy_manager=self.proxy_manager
                 )
 

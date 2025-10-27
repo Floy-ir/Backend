@@ -5,6 +5,7 @@ from . import interfaces
 import time
 import gc
 from utils.proxy_manager.interfaces import ProxyRequest, ProxyResponse
+from utils.proxy_manager.services import ProxyManagerService
 
 logger = logging.getLogger(__name__)
 
@@ -146,8 +147,8 @@ class RequestsHTTPRequester(interfaces.AbstractHTTPRequester):
     def delete(self, *args, **kwargs):
         return self.request('DELETE', *args, **kwargs)
 
-    def _make_proxy_request(self, method: str, url: str, data=None, timeout: Tuple[int, int], 
-                           parse_response_as_json: bool, kwargs: dict, proxy_manager) -> interfaces.RequesterResponse:
+    def _make_proxy_request(self, method: str, url: str, data=None, timeout: Tuple[int, int] = (10, 30), 
+                           parse_response_as_json: bool = True, kwargs: dict = None, proxy_manager: ProxyManagerService = None) -> interfaces.RequesterResponse:
         """Make a request using proxy rotation"""
         try:
             # Create proxy request
