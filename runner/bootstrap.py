@@ -13,7 +13,7 @@ from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
 from apps.flights.services import FlightsService
 from apps.statistics.services import StatisticsService
-from apps.ai_agent.services import AIAgentService
+# from apps.ai_agent.services import AIAgentService
 # libs services
 from libs.redis_client.services import CacheService
 from utils.date_time.services import DateTimeUtils
@@ -151,18 +151,18 @@ class Bootstrapper:
         if proxy_url:
             logger.info(f"Using proxy for OpenAI API: {proxy_url}")
         
-        self._ai_agent_service = kwargs.get(
-            'ai_agent_service',
-            AIAgentService(
-                claim=accounts_interfaces.Session.for_internal_app(uid='ai_agent_service'),
-                flights_service=self._flights_service,
-                cities_service=self._flight_city_service,
-                airlines_service=self._airlines_service,
-                date_time_utils=_date_time_utils,
-                openai_api_key=openai_api_key,
-                proxy_url=proxy_url
-            )
-        )
+        # self._ai_agent_service = kwargs.get(
+        #     'ai_agent_service',
+        #     AIAgentService(
+        #         claim=accounts_interfaces.Session.for_internal_app(uid='ai_agent_service'),
+        #         flights_service=self._flights_service,
+        #         cities_service=self._flight_city_service,
+        #         airlines_service=self._airlines_service,
+        #         date_time_utils=_date_time_utils,
+        #         openai_api_key=openai_api_key,
+        #         proxy_url=proxy_url
+        #     )
+        # )
 
 
     def get_account_service(self) -> AccountService:
@@ -192,8 +192,8 @@ class Bootstrapper:
     def get_date_time_utils(self) -> DateTimeUtils:
         return self._date_time_utils
 
-    def get_ai_agent_service(self) -> AIAgentService:
-        return self._ai_agent_service
+    # def get_ai_agent_service(self) -> AIAgentService:
+    #     return self._ai_agent_service
 
     def cleanup(self):
         """Cleanup resources to prevent memory leaks"""
