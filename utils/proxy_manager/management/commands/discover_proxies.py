@@ -18,6 +18,12 @@ class Command(BaseCommand):
             help='Minimum number of proxies to discover (default: 20)'
         )
         parser.add_argument(
+            '--target-count',
+            type=int,
+            default=50,
+            help='Target number of working proxies to find and save (default: 50)'
+        )
+        parser.add_argument(
             '--max-workers',
             type=int,
             default=50,
@@ -37,27 +43,33 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         scraper = PublicProxyScraper()
         
-        if options['validate-only']:
+        if options.get('validate-only', False):
             self.validate_existing_proxies(scraper)
         else:
             self.discover_new_proxies(scraper, options)
         
-        if options['cleanup']:
+        if options.get('cleanup', False):
             self.cleanup_old_proxies(scraper)
 
     def discover_new_proxies(self, scraper, options):
         """Discover and add new proxies"""
         self.stdout.write("Starting proxy discovery...")
         
+        target_count = options.get('target_count', 50)
+        
         try:
-            # Get fresh proxies
-            fresh_proxies = scraper.get_fresh_proxies(min_count=options['min_count'])
+            # Get proxies and validate until we find target_count working ones
+            fresh_proxies = scraper.get_valid_proxies_until_count(target_count=target_count)
             
             if not fresh_proxies:
                 self.stdout.write(
                     self.style.WARNING("No valid proxies found")
                 )
                 return
+            
+            self.stdout.write(
+                self.style.SUCCESS(f"Found {len(fresh_proxies)} working proxies")
+            )
             
             # Update database
             added_count = scraper.update_proxy_database(fresh_proxies)
