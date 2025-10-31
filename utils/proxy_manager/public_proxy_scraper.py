@@ -18,7 +18,7 @@ class PublicProxyScraper:
         self.proxy_sources = [
             {
                 'name': 'Advanced-Name',
-                'url': 'https://advanced.name/freeproxy/6900e3a291f04?type=https',
+                'url': 'https://advanced.name/freeproxy/69047cddb2792?type=https',
                 'format': 'text',
                 'separator': '\n'
             }
