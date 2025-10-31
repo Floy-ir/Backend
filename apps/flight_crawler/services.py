@@ -27,6 +27,7 @@ SEARCH_ID_REQUEST_STRUCTURE = 'search_id_request_structure'
 SEARCH_ID = 'search_id'
 URL = 'url'
 METHOD = 'method'
+SHOULD_REPEAT = 'should_repeat'
 
 # Request method constants
 GET_METHOD = 'get'
@@ -235,7 +236,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
         formatted_params = self._format_inputs(request_structure, search_params.model_dump())
 
-        has_search_id = request_structure.get(IS_FINISHED_FIELD, None)
+        # Controls
+        has_is_finished_field = IS_FINISHED_FIELD in request_structure
+        should_repeat = bool(request_structure.get(SHOULD_REPEAT, False))
 
         all_flights = []
         is_continued = True
@@ -323,18 +326,19 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 )
 
                 response_data = response.content_json
-                # Check if is_finished_field exists in request_structure
-                if IS_FINISHED_FIELD in request_structure:
+                # Determine continuation based on config
+                if has_is_finished_field:
                     is_api_call_finished = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
-                    if is_api_call_finished is None: 
+                    if is_api_call_finished is None:
                         is_continued = False
-                    else: 
-                        is_continued = not(is_api_call_finished)
+                    else:
+                        is_continued = not (is_api_call_finished)
                 else:
-                    # If no is_finished_field, we only want one response
+                    # If no is_finished_field, only one response unless explicitly repeating is requested (unsupported)
                     is_continued = False
 
-                if not has_search_id:
+                # Accumulate flights for single-endpoint flows (either normal single call or repeatable single endpoint)
+                if should_repeat or not request_structure.get(SEARCH_ID_REQUEST_STRUCTURE):
                     flights = self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH])
                     if flights:
                         all_flights.extend(flights)
@@ -348,8 +352,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 logger.error(f"Error fetching flights from {source.website.name}: {str(e)}")
                 raise interfaces.UnsuccessfulRequest()
 
-        # Check if search_id_request_structure exists before proceeding
-        if SEARCH_ID_REQUEST_STRUCTURE not in request_structure or not request_structure[SEARCH_ID_REQUEST_STRUCTURE]:
+        # If this is a repeatable single-endpoint flow, or there is no second-phase polling, parse and return
+        if should_repeat or SEARCH_ID_REQUEST_STRUCTURE not in request_structure or not request_structure[SEARCH_ID_REQUEST_STRUCTURE]:
             result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
             return result
 
