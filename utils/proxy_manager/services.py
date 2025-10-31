@@ -156,7 +156,15 @@ class ProxyManagerService(AbstractProxyManager):
                 response_time = time.time() - start_time
 
                 # Update proxy stats on success
-                self.update_proxy_stats(proxy_info, True, response_time)
+                self.update_proxy_stats(
+                    proxy_info=proxy_info,
+                    success=True,
+                    response_time=response_time,
+                    request_url=request.url,
+                    request_method=request.method,
+                    status_code=response.status_code,
+                    error_message=None
+                )
 
                 return ProxyResponse(
                     status_code=response.status_code,
@@ -171,7 +179,15 @@ class ProxyManagerService(AbstractProxyManager):
                 last_error = e
                 
                 # Update proxy stats on failure
-                self.update_proxy_stats(proxy_info, False, 0.0)
+                self.update_proxy_stats(
+                    proxy_info=proxy_info,
+                    success=False,
+                    response_time=0.0,
+                    request_url=request.url,
+                    request_method=request.method,
+                    status_code=0,
+                    error_message=str(e)
+                )
                 
                 # If this is not the last attempt, continue to next proxy
                 if attempt < max_retries - 1:
@@ -211,7 +227,16 @@ class ProxyManagerService(AbstractProxyManager):
         finally:
             session.close()
 
-    def update_proxy_stats(self, proxy_info: ProxyInfo, success: bool, response_time: float) -> None:
+    def update_proxy_stats(
+        self,
+        proxy_info: ProxyInfo,
+        success: bool,
+        response_time: float,
+        request_url: str,
+        request_method: str,
+        status_code: int,
+        error_message: Optional[str] = None
+    ) -> None:
         """Update proxy statistics after a request"""
         try:
             with transaction.atomic():
@@ -246,12 +271,12 @@ class ProxyManagerService(AbstractProxyManager):
                 # Log the usage
                 ProxyUsageLog.objects.create(
                     proxy=proxy,
-                    url=request.url,
-                    method=request.method,
-                    status_code=200 if success else 500,
+                    url=request_url,
+                    method=request_method,
+                    status_code=status_code if status_code is not None else (200 if success else 500),
                     response_time=response_time,
                     success=success,
-                    error_message=str(last_error) if not success else None
+                    error_message=error_message if not success else None
                 )
 
         except Exception as e:
@@ -270,13 +295,29 @@ class ProxyManagerService(AbstractProxyManager):
             is_healthy = response.status_code == 200
             
             # Update stats based on health check
-            self.update_proxy_stats(proxy_info, is_healthy, response.elapsed.total_seconds())
+            self.update_proxy_stats(
+                proxy_info=proxy_info,
+                success=is_healthy,
+                response_time=response.elapsed.total_seconds(),
+                request_url=request.url,
+                request_method=request.method,
+                status_code=response.status_code,
+                error_message=None
+            )
             
             return is_healthy
 
         except Exception as e:
             logger.warning(f"Health check failed for proxy {proxy_info.host}:{proxy_info.port}: {e}")
-            self.update_proxy_stats(proxy_info, False, 0.0)
+            self.update_proxy_stats(
+                proxy_info=proxy_info,
+                success=False,
+                response_time=0.0,
+                request_url=self.config.health_check_url,
+                request_method="GET",
+                status_code=0,
+                error_message=str(e)
+            )
             return False
 
     def get_all_proxies(self) -> List[ProxyInfo]:
