@@ -332,12 +332,12 @@ class FlightsService(interfaces.AbstractFlightsService):
                             departure_date=departure_date,
                             origin=request.origin,
                             destination=request.destination,
+                            seat_class=flight_data.seat_class,
                             defaults={
                                 "uid": str(uuid4()),
                                 "departure_timestamp": flight_data.departure_timestamp,
                                 "arrival_timestamp": flight_data.arrival_timestamp,
                                 "allowed_weight": flight_data.allowed_weight,
-                                "seat_class": flight_data.seat_class,
                             }
                         )
                     else:
