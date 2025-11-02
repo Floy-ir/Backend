@@ -1,5 +1,7 @@
+import json
 import logging
 import sys
+import requests
 from . import interfaces
 
 logger = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ class MockSMSService(interfaces.AbstractSMSService):
         """
         Send OTP code via SMS.
         """
-        message = f"Your verification code is: {code}"
+        message = f"کد تایید فلوی: {code}"
         
         # Log to logger
         logger.info(f"Mock OTP sent to {mobile}: {code}")
@@ -53,41 +55,61 @@ class MockSMSServiceFactory(interfaces.AbstractSMSServiceFactory):
         return MockSMSService()
 
 
-# Example implementation for Kavenegar (Iranian SMS provider)
-# Uncomment and configure when ready to use real SMS service
-"""
-import requests
-from typing import Optional
-
-class KavenegarSMSService(interfaces.AbstractSMSService):
-    def __init__(self, api_key: str, sender: str = "10008663"):
+class MelipayamakSMSService(interfaces.AbstractSMSService):
+    """
+    Melipayamak SMS service implementation.
+    """
+    
+    def __init__(self, api_key: str, sender: str):
         self.api_key = api_key
         self.sender = sender
-        self.base_url = "https://api.kavenegar.com/v1"
+        self.base_url = "https://console.melipayamak.com/api/send/simple"
     
     def send_sms(self, mobile: str, message: str) -> bool:
+        """
+        Send SMS message via Melipayamak API.
+        """
         try:
-            url = f"{self.base_url}/{self.api_key}/sms/send.json"
-            data = {
-                "receptor": mobile,
-                "sender": self.sender,
-                "message": message
+            url = f"{self.base_url}/{self.api_key}"
+            payload = json.dumps({
+                "from": self.sender,
+                "to": mobile,
+                "text": message
+            })
+            headers = {
+                'Content-Type': 'application/json'
             }
-            response = requests.post(url, data=data)
-            return response.status_code == 200
+            
+            response = requests.post(url, headers=headers, data=payload)
+            
+            if response.status_code == 200:
+                logger.info(f"SMS sent successfully to {mobile} via Melipayamak")
+                return True
+            else:
+                logger.error(f"Failed to send SMS via Melipayamak. Status: {response.status_code}, Response: {response.text}")
+                return False
+                
         except Exception as e:
-            logger.error(f"Failed to send SMS via Kavenegar: {e}")
+            logger.error(f"Failed to send SMS via Melipayamak: {e}")
             return False
     
     def send_otp(self, mobile: str, code: str) -> bool:
-        message = f"کد تایید شما: {code}"
+        """
+        Send OTP code via SMS.
+        """
+        message = f"کد تایید فلوی: {code}"
         return self.send_sms(mobile, message)
 
-class KavenegarSMSServiceFactory(interfaces.AbstractSMSServiceFactory):
-    def __init__(self, api_key: str, sender: str = "10008663"):
+
+class MelipayamakSMSServiceFactory(interfaces.AbstractSMSServiceFactory):
+    """
+    Factory for creating Melipayamak SMS service instances.
+    """
+    
+    def __init__(self, api_key: str, sender: str):
         self.api_key = api_key
         self.sender = sender
     
     def get_sms_service(self) -> interfaces.AbstractSMSService:
-        return KavenegarSMSService(self.api_key, self.sender)
-"""
+        return MelipayamakSMSService(self.api_key, self.sender)
+

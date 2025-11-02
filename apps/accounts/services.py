@@ -6,6 +6,7 @@ from . import interfaces
 from utils.date_time import interfaces as date_time_interfaces
 from .models import User, OTP
 from externals.sms.services import MockSMSServiceFactory
+from externals.sms import interfaces as sms_interfaces
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,11 +15,14 @@ logger = logging.getLogger(__name__)
 class AccountService(interfaces.AbstractAccountService):
     def __init__(self,
                  claim: interfaces.Session = None,
-                 session_life_time_in_second: int = 24 * 60 * 60
+                 session_life_time_in_second: int = 24 * 60 * 60,
+                 sms_service_factory: sms_interfaces.AbstractSMSServiceFactory = None
                  ):
         self.claim = claim
         self.session_life_time_in_second = session_life_time_in_second
-        self.sms_service = MockSMSServiceFactory().get_sms_service()
+        if sms_service_factory is None:
+            sms_service_factory = MockSMSServiceFactory()
+        self.sms_service = sms_service_factory.get_sms_service()
     
     def send_otp(self, request: interfaces.SendOTPRequest) -> interfaces.SendOTPResponse:
         """
