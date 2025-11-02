@@ -13,6 +13,7 @@ from utils.http_requester import interfaces as http_requester_interfaces
 from apps.flight_crawler.models import Website, WebsiteRoute
 from . import interfaces
 from apps.flights import interfaces as flights_interfaces
+from utils.proxy_manager.services import ProxyManagerService
 
 
 # Request structure constants
@@ -26,6 +27,7 @@ SEARCH_ID_REQUEST_STRUCTURE = 'search_id_request_structure'
 SEARCH_ID = 'search_id'
 URL = 'url'
 METHOD = 'method'
+SHOULD_REPEAT = 'should_repeat'
 
 # Request method constants
 GET_METHOD = 'get'
@@ -59,6 +61,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                  http_requester: http_requester_interfaces.AbstractHTTPRequester,
                  cache_service: cache_interfaces.ICacheService,
                  airline_service: airline_interfaces.AbstractAirlineService,
+                 proxy_manager: ProxyManagerService = None,
+                 use_proxy: bool = True,
                  max_adults: int = 1,
                  ):
         self.claim = claim
@@ -69,6 +73,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.file_storage = file_storage_service
         self.cache_service = cache_service
         self.http_requester = http_requester
+        self.proxy_manager = proxy_manager or ProxyManagerService()
+        self.use_proxy = use_proxy
         self.max_adults = max_adults
 
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
@@ -217,6 +223,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         method = source.website.request_payload_structure["method"]
         request_structure = source.website.request_payload_structure
         response_parsing_rules = source.website.response_parsing_rules
+        
+        # Check if this specific website should use proxy
+        website_use_proxy = source.website.use_proxy
 
         if source.config and CITY_MAPPING in source.config:
             city_mapping = source.config[CITY_MAPPING]
@@ -227,7 +236,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
 
         formatted_params = self._format_inputs(request_structure, search_params.model_dump())
 
-        has_search_id = request_structure.get(IS_FINISHED_FIELD, None)
+        # Controls
+        has_is_finished_field = IS_FINISHED_FIELD in request_structure
+        should_repeat = bool(request_structure.get(SHOULD_REPEAT, False))
 
         all_flights = []
         is_continued = True
@@ -251,24 +262,41 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 try:
                     if method == GET_METHOD:
                         logger.info(f"Making GET request to {url} (Attempt {retry_count + 1}/{max_retries})")
+                        logger.info(f"Using proxy: {website_use_proxy}")
+                        print(f"🔍 GET Request Payload - URL: {url}")
+                        print(f"🔍 GET Request Payload - Headers: {headers}")
+                        print(f"🔍 GET Request Payload - Params: {params}")
+                        print(f"🌐 Using Proxy: {website_use_proxy}")
                         response = self.http_requester.get(
                             url=url,
                             headers=headers,
-                            params=params
+                            params=params,
+                            use_proxy=website_use_proxy,
+                            proxy_manager=self.proxy_manager
                         )
                     else:  # POST method
                         logger.info(f"Making POST request to {url} (Attempt {retry_count + 1}/{max_retries})")
+                        logger.info(f"Using proxy: {website_use_proxy}")
+                        print(f"🔍 POST Request Payload - URL: {url}")
+                        print(f"🔍 POST Request Payload - Headers: {headers}")
+                        print(f"🌐 Using Proxy: {website_use_proxy}")
                         if request_structure.get("way") == "params":
+                            print(f"🔍 POST Request Payload - Params: {params}")
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
-                                params=params
+                                params=params,
+                                use_proxy=website_use_proxy,
+                                proxy_manager=self.proxy_manager
                             )
                         else:
+                            print(f"🔍 POST Request Payload - JSON Body: {json}")
                             response = self.http_requester.post(
                                 url=url,
                                 headers=headers,
-                                json=json
+                                json=json,
+                                use_proxy=website_use_proxy,
+                                proxy_manager=self.proxy_manager
                             )
 
                     if response.status_code == 200:
@@ -298,18 +326,19 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 )
 
                 response_data = response.content_json
-                # Check if is_finished_field exists in request_structure
-                if IS_FINISHED_FIELD in request_structure:
+                # Determine continuation based on config
+                if has_is_finished_field:
                     is_api_call_finished = self._extract_nested_value(data=response_data, path=request_structure[IS_FINISHED_FIELD])
-                    if is_api_call_finished is None: 
+                    if is_api_call_finished is None:
                         is_continued = False
-                    else: 
-                        is_continued = not(is_api_call_finished)
+                    else:
+                        is_continued = not (is_api_call_finished)
                 else:
-                    # If no is_finished_field, we only want one response
+                    # If no is_finished_field, only one response unless explicitly repeating is requested (unsupported)
                     is_continued = False
 
-                if not has_search_id:
+                # Accumulate flights for single-endpoint flows (either normal single call or repeatable single endpoint)
+                if should_repeat or not request_structure.get(SEARCH_ID_REQUEST_STRUCTURE):
                     flights = self._extract_nested_value(response_data, request_structure[FLIGHTS_PATH])
                     if flights:
                         all_flights.extend(flights)
@@ -323,8 +352,8 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 logger.error(f"Error fetching flights from {source.website.name}: {str(e)}")
                 raise interfaces.UnsuccessfulRequest()
 
-        # Check if search_id_request_structure exists before proceeding
-        if SEARCH_ID_REQUEST_STRUCTURE not in request_structure or not request_structure[SEARCH_ID_REQUEST_STRUCTURE]:
+        # If this is a repeatable single-endpoint flow, or there is no second-phase polling, parse and return
+        if should_repeat or SEARCH_ID_REQUEST_STRUCTURE not in request_structure or not request_structure[SEARCH_ID_REQUEST_STRUCTURE]:
             result = self._parse_response(source=source, flights=all_flights, parser=response_parsing_rules, request=search_params)
             return result
 
@@ -344,20 +373,29 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     search_id_request_params = self._format_inputs(search_id_request_structure, search_id_request_params)
 
                     logger.info(f"Params: {search_id_request_params}")
+                    print(f"🔍 Search ID GET Request Payload - URL: {search_id_request_structure[API_URL]}")
+                    print(f"🔍 Search ID GET Request Payload - Headers: {base_headers}")
+                    print(f"🔍 Search ID GET Request Payload - Params: {search_id_request_params}")
 
                     response = self.http_requester.get(
                         url=search_id_request_structure[API_URL],
                         headers=base_headers,
                         params=search_id_request_params,
+                        use_proxy=website_use_proxy,
+                        proxy_manager=self.proxy_manager
                     )
 
                 else:
                     logger.info(f"Making GET request to {request_structure[API_URL]}/{search_id}")
                     logger.info(f"Headers: {request_structure[HEADERS]}")
+                    print(f"🔍 Search ID GET Request Payload - URL: {search_id_request_structure[API_URL]}/{search_id}")
+                    print(f"🔍 Search ID GET Request Payload - Headers: {base_headers}")
                     
                     response = self.http_requester.get(
                         url=search_id_request_structure[API_URL] + '/' + search_id,
                         headers=base_headers,
+                        use_proxy=website_use_proxy,
+                        proxy_manager=self.proxy_manager
                     )
             else:
                 logger.info(f"Making POST request to {search_id_request_structure[API_URL]}")
@@ -372,7 +410,9 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                 response = self.http_requester.post(
                     url=search_id_request_structure[API_URL],
                     headers=base_headers,
-                    json=search_id_body
+                    json=search_id_body,
+                    use_proxy=website_use_proxy,
+                    proxy_manager=self.proxy_manager
                 )
 
             if response.status_code != 200:

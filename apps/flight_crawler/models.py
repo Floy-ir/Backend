@@ -8,6 +8,7 @@ class Website(models.Model):
     request_payload_structure = models.JSONField(default=dict, blank=True)
     response_parsing_rules = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
+    use_proxy = models.BooleanField(default=False, help_text="Use proxy for this website to avoid IP bans")
     base_url = models.CharField(max_length=255)
     redirect_url_template = models.CharField(max_length=512)
     one_adult_url_template = models.CharField(max_length=512, null=True, blank=True)

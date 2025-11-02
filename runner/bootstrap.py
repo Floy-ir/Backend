@@ -13,6 +13,7 @@ from apps.file_storage.services import FileStorageService
 from apps.airlines.services import AirlineService
 from apps.flights.services import FlightsService
 from apps.statistics.services import StatisticsService
+# from apps.ai_agent.services import AIAgentService
 # libs services
 from libs.redis_client.services import CacheService
 from utils.date_time.services import DateTimeUtils
@@ -164,6 +165,12 @@ class Bootstrapper:
     
     def get_statistics_service(self) -> StatisticsService:
         return self._statistics_service
+
+    def get_date_time_utils(self) -> DateTimeUtils:
+        return self._date_time_utils
+
+    # def get_ai_agent_service(self) -> AIAgentService:
+    #     return self._ai_agent_service
 
     def cleanup(self):
         """Cleanup resources to prevent memory leaks"""

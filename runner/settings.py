@@ -59,7 +59,9 @@ INSTALLED_APPS = [
     'apps.flights',
     'apps.accounts',
     'apps.flight_crawler',
-    'apps.statistics'
+    'apps.statistics',
+    # 'apps.ai_agent'
+    'utils.proxy_manager',
 ]
 
 MIDDLEWARE = [
