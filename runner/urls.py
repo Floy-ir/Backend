@@ -26,5 +26,4 @@ urlpatterns = [
     path('airlines/', include('apps.airlines.urls')),
     path('websites/', include('apps.flight_crawler.urls')),
     path('statistics/', include('apps.statistics.urls')),
-    path('ai-agent/', include('apps.ai_agent.urls')),
 ]
