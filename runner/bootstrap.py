@@ -4,6 +4,7 @@ import os
 from apps.flight_crawler.services import FlightCrawlerService
 # externals
 from externals.s3.services import MinioClientFactory
+from externals.sms.services import MockSMSServiceFactory, MelipayamakSMSServiceFactory
 # apps interfaces
 from apps.accounts import interfaces as accounts_interfaces
 # apps services
@@ -49,6 +50,24 @@ class Bootstrapper:
         _REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
         _REDIS_DB = int(os.getenv('REDIS_DB', '0'))
 
+        # SMS service configuration
+        _melipayamak_api_key = os.getenv('MELIPAYAMAK_API_KEY', '')
+        _melipayamak_sender = os.getenv('MELIPAYAMAK_SENDER', '')
+        
+        # Create SMS service factory
+        if _melipayamak_api_key and _melipayamak_sender:
+            logger.info("Using Melipayamak SMS service")
+            _sms_service_factory = kwargs.get(
+                'sms_service_factory',
+                MelipayamakSMSServiceFactory(
+                    api_key=_melipayamak_api_key,
+                    sender=_melipayamak_sender
+                )
+            )
+        else:
+            logger.warning("MELIPAYAMAK_API_KEY or MELIPAYAMAK_SENDER not configured, using Mock SMS service")
+            _sms_service_factory = kwargs.get('sms_service_factory', MockSMSServiceFactory())
+
         # variables
         _max_adults = 2
 
@@ -77,7 +96,9 @@ class Bootstrapper:
         # apps
         self._account_service = kwargs.get(
             'account_service',
-            AccountService()
+            AccountService(
+                sms_service_factory=_sms_service_factory
+            )
         )
 
         self._file_storage_service = kwargs.get(
