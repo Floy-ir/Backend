@@ -1,4 +1,5 @@
 import requests
+import os
 from requests.exceptions import RequestException, Timeout, ProxyError
 import time
 import logging
@@ -15,14 +16,31 @@ class PublicProxyScraper:
     """Service for scraping and validating public proxies"""
     
     def __init__(self):
-        self.proxy_sources = [
-            {
-                'name': 'Advanced-Name',
-                'url': 'https://advanced.name/freeproxy/69047cddb2792?type=https',
-                'format': 'text',
-                'separator': '\n'
-            }
-        ]
+        # Prefer externally provided proxy source URL(s) via environment
+        # Multiple URLs can be provided, separated by commas
+        env_urls = os.environ.get('PROXY_URL')
+        if env_urls:
+            urls = [u.strip() for u in env_urls.split(',') if u.strip()]
+            self.proxy_sources = [
+                {
+                    'name': f'Env-Source-{idx+1}',
+                    'url': url,
+                    'format': 'text',
+                    'separator': '\n'
+                }
+                for idx, url in enumerate(urls)
+            ]
+            logger.info(f"Using PROXY_URL from environment with {len(self.proxy_sources)} source(s)")
+        else:
+            # Fallback to hardcoded public source when env not provided
+            self.proxy_sources = [
+                {
+                    'name': 'Advanced-Name',
+                    'url': 'https://advanced.name/freeproxy/69047cddb2792?type=https',
+                    'format': 'text',
+                    'separator': '\n'
+                }
+            ]
         
         self.test_urls = [
             'https://httpbin.org/ip',
