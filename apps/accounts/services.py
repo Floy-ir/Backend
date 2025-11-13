@@ -288,11 +288,15 @@ class AccountService(interfaces.AbstractAccountService):
             user.last_login_at = current_time
             user.save()
         except EitaUser.DoesNotExist:
-            EitaUser.objects.create(
+            user = EitaUser.objects.create(
                 uid=str(uuid4()),
                 eita_id=request.eita_id,
                 created_at=current_time,
                 last_login_at=current_time
             )
+
+        if request.mobile != None: 
+            user.mobile = request.mobile 
+            user.save()
 
         return interfaces.EitaLoginResponse(success=True)

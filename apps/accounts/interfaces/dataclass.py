@@ -142,7 +142,7 @@ class AuthResponse(dataclasses.BaseModel):
 
 class EitaLoginRequest(dataclasses.BaseModel):
     eita_id: str
-
+    mobile: str | None = None
 
 class EitaLoginResponse(dataclasses.BaseModel):
     success: bool
