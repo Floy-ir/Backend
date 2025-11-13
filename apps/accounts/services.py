@@ -4,7 +4,7 @@ from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from . import interfaces
 from utils.date_time import interfaces as date_time_interfaces
-from .models import User, OTP
+from .models import EitaUser, User, OTP
 from externals.sms.services import MockSMSServiceFactory
 from externals.sms import interfaces as sms_interfaces
 import logging
@@ -272,3 +272,25 @@ class AccountService(interfaces.AbstractAccountService):
         return interfaces.ForgotPasswordResponse(
             success=True,
         )
+
+
+    def eita_login(self, request: interfaces.EitaLoginRequest) -> interfaces.EitaLoginResponse:
+        """
+        Login user with Eita ID and password.
+        """
+        # Find user by Eita ID
+        current_time = self.date_time_utils.get_current_timestamp()
+
+        try:
+            user = EitaUser.objects.get(eita_id=request.eita_id)
+            user.last_login_at = current_time
+            user.save()
+        except EitaUser.DoesNotExist:
+            EitaUser.objects.create(
+                uid=str(uuid4()),
+                eita_id=request.eita_id,
+                created_at=current_time,
+                last_login_at=current_time
+            )
+
+        return interfaces.EitaLoginResponse(success=True)
