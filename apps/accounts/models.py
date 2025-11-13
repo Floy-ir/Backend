@@ -39,7 +39,7 @@ class OTP(models.Model):
 
 class EitaUser(models.Model):
     uid = models.CharField(max_length=128, unique=True)
-    eita_id = models.CharField(max_length=256, unique=True)
+    eita_id = models.CharField(max_length=256, unique=True, default="nothing")
     created_at = models.PositiveBigIntegerField(default=0)
     last_login_at = models.PositiveBigIntegerField(default=0)
 
