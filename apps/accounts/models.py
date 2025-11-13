@@ -35,3 +35,12 @@ class OTP(models.Model):
     
     class Meta:
         db_table = 'accounts_otp'
+
+
+class EitaUser(models.Model):
+    uid = models.CharField(max_length=128, unique=True)
+    created_at = models.PositiveBigIntegerField(default=0)
+    last_login_at = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        db_table = 'accounts_eita_user'

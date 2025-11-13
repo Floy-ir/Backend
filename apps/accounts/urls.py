@@ -13,4 +13,5 @@ urlpatterns = [
     path('login/', views.AccountViewSet.as_view({'post': 'login'}), name='login'),
     path('forgot-password/', views.AccountViewSet.as_view({'post': 'forgot_password'}), name='forgot-password'),
     path('reset-password/', views.AccountViewSet.as_view({'post': 'reset_password'}), name='reset-password'),
+    path('eita/', views.AccountViewSet.as_view({'post': 'eita_login'}), name='eita-login'),
 ]

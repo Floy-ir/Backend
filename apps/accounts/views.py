@@ -44,3 +44,9 @@ class AccountViewSet(viewsets.GenericViewSet):
         reset_password_request = interfaces.ResetPasswordRequest(**request.data)
         results = service.reset_password(reset_password_request)
         return response.Response(results.model_dump())
+
+    def eita_login(self, request):
+        service = get_bootstrapper().get_account_service()
+        eita_login_request = interfaces.EitaLoginRequest(**request.data)
+        results = service.eita_login(eita_login_request)
+        return response.Response(results.model_dump())

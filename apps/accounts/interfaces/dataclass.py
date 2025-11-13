@@ -138,3 +138,11 @@ class ForgotPasswordResponse(dataclasses.BaseModel):
 class AuthResponse(dataclasses.BaseModel):
     token: str
     user: User
+
+
+class EitaLoginRequest(dataclasses.BaseModel):
+    eita_id: str
+
+
+class EitaLoginResponse(dataclasses.BaseModel):
+    success: bool
