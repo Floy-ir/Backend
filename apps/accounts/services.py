@@ -14,15 +14,17 @@ logger = logging.getLogger(__name__)
 
 class AccountService(interfaces.AbstractAccountService):
     def __init__(self,
+                 date_time: date_time_interfaces.AbstractDateTime,
                  claim: interfaces.Session = None,
                  session_life_time_in_second: int = 24 * 60 * 60,
-                 sms_service_factory: sms_interfaces.AbstractSMSServiceFactory = None
+                 sms_service_factory: sms_interfaces.AbstractSMSServiceFactory = None,
                  ):
         self.claim = claim
         self.session_life_time_in_second = session_life_time_in_second
         if sms_service_factory is None:
             sms_service_factory = MockSMSServiceFactory()
         self.sms_service = sms_service_factory.get_sms_service()
+        self.date_time_utils = date_time 
     
     def send_otp(self, request: interfaces.SendOTPRequest) -> interfaces.SendOTPResponse:
         """
