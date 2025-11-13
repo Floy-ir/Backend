@@ -105,7 +105,12 @@ class FakeFlightCrawlerService(flight_crawler_interfaces.AbstractFlightCrawler):
         
         return results
 
-    def crawl_scheduled_flights(self, days_ahead: int = None) -> None:
+    def crawl_scheduled_flights(
+        self,
+        from_days_ahead: int,
+        to_days_ahead: int,
+        routes=None,
+    ) -> None:
         pass
 
     def upload_image(self, request: flight_crawler_interfaces.UploadImageRequest) -> flight_crawler_interfaces.WebsiteDTO:

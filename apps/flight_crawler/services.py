@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional, Set, Tuple
 from uuid import uuid4
 from string import Template
 import time
@@ -77,20 +77,65 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.use_proxy = use_proxy
         self.max_adults = max_adults
 
-    def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
+    def crawl_scheduled_flights(
+        self,
+        from_days_ahead: int,
+        to_days_ahead: int,
+        routes: Optional[List[Dict[str, str]]] = None,
+    ) -> None:
         import gc
+
+        route_filters: Optional[Set[Tuple[str, str]]] = None
+        processed_routes: Set[Tuple[str, str]] = set()
+
+        if routes:
+            route_filters = set()
+            for route in routes:
+                origin = None
+                destination = None
+
+                if isinstance(route, dict):
+                    origin = route.get("origin")
+                    destination = route.get("destination")
+
+                if origin:
+                    origin = origin.strip().upper()
+                if destination:
+                    destination = destination.strip().upper()
+
+                if not origin or not destination:
+                    logger.warning("Skipping invalid route filter: %s", route)
+                    continue
+
+                route_filters.add((origin, destination))
+
+            if route_filters and len(route_filters) != len(routes):
+                logger.info("Using %s out of %s provided route filters.", len(route_filters), len(routes))
+
+            if not route_filters:
+                logger.warning("No valid routes found in provided filters. Skipping crawl.")
+                return
+
         try:
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
-            for i in range(from_days_ahead, to_days_ahead): 
+            for i in range(from_days_ahead, to_days_ahead):
                 target_timestamp = self.date_time.get_start_timestamp_of_day_from_today(timedelta_days=i)
-                
+
                 for first_city in cities.results:
                     for sec_city in first_city.destinations:
-                        origin = first_city.value 
-                        destination = sec_city.value 
+                        origin = (first_city.value or "").strip().upper()
+                        destination = (sec_city.value or "").strip().upper()
+
+                        if route_filters and (origin, destination) not in route_filters:
+                            continue
+
                         crawl_uid = str(uuid4())
-                        flights = [] 
-                        logger.info(f"Processing route: {origin} -> {destination} at {target_timestamp}")
+                        flights = []
+                        logger.info(
+                            f"Processing route: {origin} -> {destination} at {target_timestamp}"
+                        )
+
+                        processed_routes.add((origin, destination))
 
                         try:
                             request = interfaces.CrawlRequest(
@@ -99,31 +144,41 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                                 departure_timestamp=target_timestamp,
                                 adult=1,
                                 child=0,
-                                infant=0
+                                infant=0,
                             )
-                            
+
                             flights.extend(self._crawl(request=request))
                             self.flights_service.create_flight(
                                 request=interfaces.CrawlResponse(
-                                        uid=crawl_uid,
-                                        crawl_timestamp=target_timestamp,
-                                        origin=origin,
-                                        destination=destination,
-                                        results=flights
-                                    )
+                                    uid=crawl_uid,
+                                    crawl_timestamp=target_timestamp,
+                                    origin=origin,
+                                    destination=destination,
+                                    results=flights,
                                 )
-                            
+                            )
+
                             # Clear flights list to free memory
                             flights.clear()
                             del flights
-                            
+
                         except Exception as e:
-                            logger.error(f"crawled flights for {origin} -> {destination} error ==>> {e}")
+                            logger.error(
+                                f"crawled flights for {origin} -> {destination} error ==>> {e}"
+                            )
                             continue
-                        
+
                         # Force garbage collection after each route
                         gc.collect()
-                    
+
+            if route_filters:
+                missing_routes = route_filters - processed_routes
+                if missing_routes:
+                    logger.warning(
+                        "Requested routes not processed (possibly unsupported): %s",
+                        list(missing_routes),
+                    )
+
         except Exception as e:
             logger.error(f"Error in crawl_scheduled_flights: {str(e)}")
             raise

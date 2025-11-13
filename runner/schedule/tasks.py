@@ -6,12 +6,12 @@ logger = logging.getLogger(__name__)
 
 
 @app.task
-def crawl_three_days_ahead(): 
+def crawl_three_days_ahead(routes=None): 
     bootstrapper = None
     try:
         bootstrapper = get_bootstrapper()
         service = bootstrapper.get_flight_crawler_service()
-        service.crawl_scheduled_flights(from_days_ahead=0, to_days_ahead=5)
+        service.crawl_scheduled_flights(from_days_ahead=0, to_days_ahead=5, routes=routes)
         logger.info("crawl_three_days_ahead completed successfully")
     except Exception as e:
         logger.error(f"Error in crawl_three_days_ahead: {e}")
@@ -21,12 +21,12 @@ def crawl_three_days_ahead():
             bootstrapper.cleanup()
 
 @app.task
-def crawl_four_and_more_days_ahead(): 
+def crawl_four_and_more_days_ahead(routes=None): 
     bootstrapper = None
     try:
         bootstrapper = get_bootstrapper()
         service = bootstrapper.get_flight_crawler_service()
-        service.crawl_scheduled_flights(from_days_ahead=0, to_days_ahead=14)
+        service.crawl_scheduled_flights(from_days_ahead=0, to_days_ahead=14, routes=routes)
         logger.info("crawl_four_and_more_days_ahead completed successfully")
     except Exception as e:
         logger.error(f"Error in crawl_four_and_more_days_ahead: {e}")
