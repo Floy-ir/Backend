@@ -77,9 +77,15 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
         self.use_proxy = use_proxy
         self.max_adults = max_adults
 
-    def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
+    def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int, routes: List[List[str]] = None) -> None:
         import gc
         try:
+            # If routes are provided, convert to set of tuples for faster lookup
+            routes_set = None
+            if routes:
+                routes_set = {(route[0], route[1]) for route in routes if len(route) >= 2}
+                logger.info(f"Filtering routes to {len(routes_set)} specific route(s)")
+            
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
             for i in range(from_days_ahead, to_days_ahead): 
                 target_timestamp = self.date_time.get_start_timestamp_of_day_from_today(timedelta_days=i)
@@ -88,6 +94,12 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
                     for sec_city in first_city.destinations:
                         origin = first_city.value 
                         destination = sec_city.value 
+                        
+                        # Filter by routes if provided
+                        if routes_set is not None:
+                            if (origin, destination) not in routes_set:
+                                continue
+                        
                         crawl_uid = str(uuid4())
                         flights = [] 
                         logger.info(f"Processing route: {origin} -> {destination} at {target_timestamp}")

@@ -102,16 +102,16 @@ services:
       timeout: 20s
       retries: 3
 
-  celery-beat-three:
+  celery-beat-three-1:
     build:
       context: .
       dockerfile: Dockerfile
     image: floy_backend:latest
-    container_name: celery-beat-three
+    container_name: celery-beat-three-1
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - .:/app
-      - celerybeat_data_three:/app/celerybeat-data
+      - celerybeat_data_three_1:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
     command: worker --beat --loglevel=INFO --concurrency=1
     env_file:
@@ -121,6 +121,9 @@ services:
       - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
       - C_FORCE_ROOT=true
       - PYTHONUNBUFFERED=1
+      # CRAWL_ROUTES_THREE_1: JSON array of routes to crawl, e.g., [["THR", "AWZ"], ["IKA", "DXB"]]
+      # Leave empty to crawl all routes. Can be overridden in .env file
+      - CRAWL_ROUTES_THREE_1=${CRAWL_ROUTES_THREE_1:-}
     networks:
       floy_network:
         ipv4_address: 172.20.0.6
@@ -132,16 +135,49 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  celery-beat-four:
+  celery-beat-three-2:
     build:
       context: .
       dockerfile: Dockerfile
     image: floy_backend:latest
-    container_name: celery-beat-four
+    container_name: celery-beat-three-2
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - .:/app
-      - celerybeat_data_four:/app/celerybeat-data
+      - celerybeat_data_three_2:/app/celerybeat-data
+    entrypoint: celery -A runner.schedule.celery
+    command: worker --beat --loglevel=INFO --concurrency=1
+    env_file:
+      - .env
+    environment:
+      - BEAT_ROLE=three_days
+      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      - C_FORCE_ROOT=true
+      - PYTHONUNBUFFERED=1
+      # CRAWL_ROUTES_THREE_2: JSON array of routes to crawl, e.g., [["THR", "AWZ"], ["IKA", "DXB"]]
+      # Leave empty to crawl all routes. Can be overridden in .env file
+      - CRAWL_ROUTES_THREE_2=${CRAWL_ROUTES_THREE_2:-}
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.9
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  celery-beat-four-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: floy_backend:latest
+    container_name: celery-beat-four-1
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - .:/app
+      - celerybeat_data_four_1:/app/celerybeat-data
     entrypoint: celery -A runner.schedule.celery
     command: worker --beat --loglevel=INFO --concurrency=2 --max-tasks-per-child=1000 --max-memory-per-child=512000
     env_file:
@@ -151,9 +187,45 @@ services:
       - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
       - C_FORCE_ROOT=true
       - PYTHONUNBUFFERED=1
+      # CRAWL_ROUTES_FOUR_1: JSON array of routes to crawl, e.g., [["THR", "AWZ"], ["IKA", "DXB"]]
+      # Leave empty to crawl all routes. Can be overridden in .env file
+      - CRAWL_ROUTES_FOUR_1=${CRAWL_ROUTES_FOUR_1:-}
     networks:
       floy_network:
         ipv4_address: 172.20.0.8
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  celery-beat-four-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: floy_backend:latest
+    container_name: celery-beat-four-2
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - .:/app
+      - celerybeat_data_four_2:/app/celerybeat-data
+    entrypoint: celery -A runner.schedule.celery
+    command: worker --beat --loglevel=INFO --concurrency=2 --max-tasks-per-child=1000 --max-memory-per-child=512000
+    env_file:
+      - .env
+    environment:
+      - BEAT_ROLE=four_plus
+      - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
+      - C_FORCE_ROOT=true
+      - PYTHONUNBUFFERED=1
+      # CRAWL_ROUTES_FOUR_2: JSON array of routes to crawl, e.g., [["THR", "AWZ"], ["IKA", "DXB"]]
+      # Leave empty to crawl all routes. Can be overridden in .env file
+      - CRAWL_ROUTES_FOUR_2=${CRAWL_ROUTES_FOUR_2:-}
+    networks:
+      floy_network:
+        ipv4_address: 172.20.0.10
     depends_on:
       db:
         condition: service_healthy
@@ -181,8 +253,10 @@ volumes:
   pgdata:
   minio_data:
   redis_data:
-  celerybeat_data_three:
-  celerybeat_data_four:
+  celerybeat_data_three_1:
+  celerybeat_data_three_2:
+  celerybeat_data_four_1:
+  celerybeat_data_four_2:
 
 networks:
   floy_network:

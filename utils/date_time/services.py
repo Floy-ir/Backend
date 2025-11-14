@@ -30,15 +30,16 @@ class DateTimeUtils(AbstractDateTime):
         return formatted_date
 
     def convert_timestamp_to_jalali_date(self, timestamp: int, separator: str = '-') -> str:
-        # Convert timestamp to datetime in UTC
-        date_obj = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        utc_datetime = datetime.fromtimestamp(timestamp, tz=timezone.utc)
         
-        # Convert to Tehran timezone (GMT+3:30)
         tehran_tz = pytz.FixedOffset(210)  # 210 minutes = 3 hours 30 minutes
-        date_obj = date_obj.astimezone(tehran_tz)
+        tehran_datetime = utc_datetime.astimezone(tehran_tz)
         
-        # Convert to Jalali date
-        jalali_date = JalaliDate(date_obj)
+        gregorian_date = tehran_datetime.date()
+        
+        gregorian_date = gregorian_date - timedelta(days=1)
+        
+        jalali_date = JalaliDate(gregorian_date)
         formatted_date = jalali_date.strftime(f"%Y{separator}%m{separator}%d")
         return formatted_date
     
