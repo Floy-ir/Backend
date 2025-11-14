@@ -85,56 +85,50 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             if routes:
                 routes_set = {(route[0], route[1]) for route in routes if len(route) >= 2}
                 logger.info(f"Filtering routes to {len(routes_set)} specific route(s)")
-            
-            cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
+            else: 
+                cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
+                routes_set = {(city.value, dest.value) for city in cities.results for dest in city.destinations}
+                logger.info(f"Filtering cities to {len(cities_set)} specific city(ies)")
+        
             for i in range(from_days_ahead, to_days_ahead): 
                 target_timestamp = self.date_time.get_start_timestamp_of_day_from_today(timedelta_days=i)
                 
-                for first_city in cities.results:
-                    for sec_city in first_city.destinations:
-                        origin = first_city.value 
-                        destination = sec_city.value 
-                        
-                        # Filter by routes if provided
-                        if routes_set is not None:
-                            if (origin, destination) not in routes_set:
-                                continue
-                        
-                        crawl_uid = str(uuid4())
-                        flights = [] 
-                        logger.info(f"Processing route: {origin} -> {destination} at {target_timestamp}")
+                for origin, destination in routes_set:  
+                    crawl_uid = str(uuid4())
+                    flights = [] 
+                    logger.info(f"Processing route: {origin} -> {destination} at {target_timestamp}")
 
-                        try:
-                            request = interfaces.CrawlRequest(
-                                origin=origin,
-                                destination=destination,
-                                departure_timestamp=target_timestamp,
-                                adult=1,
-                                child=0,
-                                infant=0
-                            )
-                            
-                            flights.extend(self._crawl(request=request))
-                            self.flights_service.create_flight(
-                                request=interfaces.CrawlResponse(
-                                        uid=crawl_uid,
-                                        crawl_timestamp=target_timestamp,
-                                        origin=origin,
-                                        destination=destination,
-                                        results=flights
-                                    )
-                                )
-                            
-                            # Clear flights list to free memory
-                            flights.clear()
-                            del flights
-                            
-                        except Exception as e:
-                            logger.error(f"crawled flights for {origin} -> {destination} error ==>> {e}")
-                            continue
+                    try:
+                        request = interfaces.CrawlRequest(
+                            origin=origin,
+                            destination=destination,
+                            departure_timestamp=target_timestamp,
+                            adult=1,
+                            child=0,
+                            infant=0
+                        )
                         
-                        # Force garbage collection after each route
-                        gc.collect()
+                        flights.extend(self._crawl(request=request))
+                        self.flights_service.create_flight(
+                            request=interfaces.CrawlResponse(
+                                    uid=crawl_uid,
+                                    crawl_timestamp=target_timestamp,
+                                    origin=origin,
+                                    destination=destination,
+                                    results=flights
+                                )
+                            )
+                        
+                        # Clear flights list to free memory
+                        flights.clear()
+                        del flights
+                        
+                    except Exception as e:
+                        logger.error(f"crawled flights for {origin} -> {destination} error ==>> {e}")
+                        continue
+                    
+                    # Force garbage collection after each route
+                    gc.collect()
                     
         except Exception as e:
             logger.error(f"Error in crawl_scheduled_flights: {str(e)}")
