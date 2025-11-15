@@ -203,6 +203,11 @@ class Bootstrapper:
             from libs.redis_client.client import RedisClient
             RedisClient.close_client()
             
+            # Close Django database connections - critical for Celery workers
+            from django.db import close_old_connections
+            close_old_connections()
+            logger.info("Closed old Django database connections")
+            
             # Force garbage collection
             gc.collect()
             logger.info("Bootstrap cleanup completed")

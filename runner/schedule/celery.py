@@ -91,3 +91,21 @@ if role in ("four_plus", "both", ""):
     }
 
 app.conf.beat_schedule = schedule_entries
+
+# Ensure database connections are closed after each task
+# This is critical for Celery workers to see committed data
+from celery.signals import task_postrun, task_prerun
+
+@task_prerun.connect
+def task_prerun_handler(sender=None, task_id=None, task=None, args=None, kwargs=None, **kwds):
+    """Close old database connections before each task"""
+    from django.db import close_old_connections
+    close_old_connections()
+    logger.debug(f"Closed old database connections before task: {task.name}")
+
+@task_postrun.connect
+def task_postrun_handler(sender=None, task_id=None, task=None, args=None, kwargs=None, retval=None, state=None, **kwds):
+    """Close database connections after each task to ensure commits are visible"""
+    from django.db import close_old_connections
+    close_old_connections()
+    logger.debug(f"Closed old database connections after task: {task.name}")
