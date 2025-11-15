@@ -1,5 +1,6 @@
 from .celery import app
 from runner.bootstrap import get_bootstrapper
+from django.db import close_old_connections
 import logging
 import os
 import json
@@ -9,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 @app.task
 def crawl_three_days_ahead(): 
+    # Close old database connections before starting the task
+    close_old_connections()
     bootstrapper = None
     try:
         # Read routes from environment variable - check for instance-specific variables
@@ -35,6 +38,8 @@ def crawl_three_days_ahead():
 
 @app.task
 def crawl_four_and_more_days_ahead(): 
+    # Close old database connections before starting the task
+    close_old_connections()
     bootstrapper = None
     try:
         # Read routes from environment variable - check for instance-specific variables
@@ -43,8 +48,10 @@ def crawl_four_and_more_days_ahead():
         crawl_routes_env = os.getenv("CRAWL_ROUTES_FOUR_1") or os.getenv("CRAWL_ROUTES_FOUR_2") or ""
         if crawl_routes_env:
             try:
-                routes = json.loads(crawl_routes_env)
+                if crawl_routes_env != "":
+                    routes = json.loads(crawl_routes_env)
                 logger.info(f"Using {len(routes)} route(s) from CRAWL_ROUTES environment variable")
+            
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse CRAWL_ROUTES: {e}. Will crawl all routes.")
         
@@ -61,6 +68,8 @@ def crawl_four_and_more_days_ahead():
 
 @app.task()
 def test_celery(): 
+    # Close old database connections before starting the task
+    close_old_connections()
     bootstrapper = None
     try:
         bootstrapper = get_bootstrapper()
