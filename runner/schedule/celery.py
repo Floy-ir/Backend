@@ -78,16 +78,20 @@ app.conf.update(
 role = (BEAT_ROLE or "").lower()
 schedule_entries = {}
 
+logger.info(f"BEAT_ROLE={role}: Scheduling tasks")
+
 if role == "three_days":
     schedule_entries['crawl_three_days_ahead'] = {
         'task': 'runner.schedule.tasks.crawl_three_days_ahead',
         'schedule': crontab(minute='0-59/10'),  # 0, 10, 20, 30, ...
     }
+    logger.info(f"BEAT_ROLE={role}: Scheduling only crawl_three_days_ahead task")
 elif role == "four_plus":
     schedule_entries['crawl_four_and_more_days_ahead'] = {
         'task': 'runner.schedule.tasks.crawl_four_and_more_days_ahead',
         'schedule': crontab(minute='5-59/20'),  # 5, 15, 25, 35, ...
     }
+    logger.info(f"BEAT_ROLE={role}: Scheduling only crawl_four_and_more_days_ahead task")
 elif role == "both" or role == "":
     # If role is "both" or empty, schedule both tasks
     schedule_entries['crawl_three_days_ahead'] = {
@@ -98,8 +102,20 @@ elif role == "both" or role == "":
         'task': 'runner.schedule.tasks.crawl_four_and_more_days_ahead',
         'schedule': crontab(minute='5-59/20'),  # 5, 15, 25, 35, ...
     }
+    logger.info(f"BEAT_ROLE={role}: Scheduling both tasks")
+else:
+    logger.warning(f"Unknown BEAT_ROLE={role}, defaulting to empty schedule")
 
+# Explicitly set the beat schedule to ensure it matches the role
 app.conf.beat_schedule = schedule_entries
+
+# Log the final schedule for verification
+logger.info(f"Final beat_schedule contains {len(schedule_entries)} task(s): {list(schedule_entries.keys())}")
+
+# Validate that four_plus role doesn't have crawl_three_days_ahead
+if role == "four_plus" and 'crawl_three_days_ahead' in app.conf.beat_schedule:
+    logger.error(f"ERROR: BEAT_ROLE=four_plus but crawl_three_days_ahead is in schedule! Removing it.")
+    app.conf.beat_schedule.pop('crawl_three_days_ahead', None)
 
 # Ensure database connections are closed after each task
 # This is critical for Celery workers to see committed data
