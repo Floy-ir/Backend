@@ -88,7 +88,7 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
             else: 
                 cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
                 routes_set = {(city.value, dest.value) for city in cities.results for dest in city.destinations}
-                logger.info(f"Filtering cities to {len(routes_set)} specific routes")
+                logger.info(f"Filtering cities to {len(routes_set)} specific city(ies)")
         
             for i in range(from_days_ahead, to_days_ahead): 
                 target_timestamp = self.date_time.get_start_timestamp_of_day_from_today(timedelta_days=i)
