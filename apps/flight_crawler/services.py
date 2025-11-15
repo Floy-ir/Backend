@@ -80,7 +80,20 @@ class FlightCrawlerService(interfaces.AbstractFlightCrawler):
     def crawl_scheduled_flights(self, from_days_ahead: int, to_days_ahead: int) -> None:
         import gc
         try:
+<<<<<<< Updated upstream
             cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
+=======
+            # If routes are provided, convert to set of tuples for faster lookup
+            routes_set = None
+            if routes:
+                routes_set = {(route[0], route[1]) for route in routes if len(route) >= 2}
+                logger.info(f"Filtering routes to {len(routes_set)} specific route(s)")
+            else: 
+                cities = self.flight_city_service.get_cities(request=flight_city_interfaces.GetCitiesRequest())
+                routes_set = {(city.value, dest.value) for city in cities.results for dest in city.destinations}
+                logger.info(f"Filtering cities to {len(routes_set)} specific city(ies)")
+        
+>>>>>>> Stashed changes
             for i in range(from_days_ahead, to_days_ahead): 
                 target_timestamp = self.date_time.get_start_timestamp_of_day_from_today(timedelta_days=i)
                 

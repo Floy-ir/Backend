@@ -78,13 +78,22 @@ app.conf.update(
 role = (BEAT_ROLE or "").lower()
 schedule_entries = {}
 
-if role in ("three_days", "both", ""):
+if role == "three_days":
     schedule_entries['crawl_three_days_ahead'] = {
         'task': 'runner.schedule.tasks.crawl_three_days_ahead',
         'schedule': crontab(minute='0-59/10'),  # 0, 10, 20, 30, ...
     }
-
-if role in ("four_plus", "both", ""):
+elif role == "four_plus":
+    schedule_entries['crawl_four_and_more_days_ahead'] = {
+        'task': 'runner.schedule.tasks.crawl_four_and_more_days_ahead',
+        'schedule': crontab(minute='5-59/20'),  # 5, 15, 25, 35, ...
+    }
+elif role == "both" or role == "":
+    # If role is "both" or empty, schedule both tasks
+    schedule_entries['crawl_three_days_ahead'] = {
+        'task': 'runner.schedule.tasks.crawl_three_days_ahead',
+        'schedule': crontab(minute='0-59/10'),  # 0, 10, 20, 30, ...
+    }
     schedule_entries['crawl_four_and_more_days_ahead'] = {
         'task': 'runner.schedule.tasks.crawl_four_and_more_days_ahead',
         'schedule': crontab(minute='5-59/20'),  # 5, 15, 25, 35, ...
