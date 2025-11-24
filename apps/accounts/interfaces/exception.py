@@ -80,3 +80,18 @@ class OTPVerificationRequiredException(BadRequest):
 class SMSServiceFailedException(BadRequest):
     def __init__(self):
         super().__init__('Failed to send SMS')
+
+
+class UnsupportedMessageTypeException(BadRequest):
+    def __init__(self):
+        super().__init__('Unsupported message type')
+
+
+class EitaServiceNotConfiguredException(BadRequest):
+    def __init__(self):
+        super().__init__('Eita service is not configured')
+
+
+class BaleServiceNotConfiguredException(BadRequest):
+    def __init__(self):
+        super().__init__('Bale service is not configured')

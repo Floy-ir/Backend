@@ -146,3 +146,41 @@ class EitaLoginRequest(dataclasses.BaseModel):
 
 class EitaLoginResponse(dataclasses.BaseModel):
     success: bool
+
+
+class EitaTypeMessage(str, Enum):
+    INITIAL = 'initial'
+
+
+class SendEitaMessageRequest(dataclasses.BaseModel):
+    message_type: EitaTypeMessage = EitaTypeMessage.INITIAL
+    text: str | None = None
+
+
+class SendEitaMessageResponse(dataclasses.BaseModel):
+    success: bool
+    sent_count: int
+    failed_count: int
+
+
+class BaleLoginRequest(dataclasses.BaseModel):
+    bale_id: str
+    mobile: str | None = None
+
+class BaleLoginResponse(dataclasses.BaseModel):
+    success: bool
+
+
+class BaleTypeMessage(str, Enum):
+    INITIAL = 'initial'
+
+
+class SendBaleMessageRequest(dataclasses.BaseModel):
+    message_type: BaleTypeMessage = BaleTypeMessage.INITIAL
+    text: str | None = None
+
+
+class SendBaleMessageResponse(dataclasses.BaseModel):
+    success: bool
+    sent_count: int
+    failed_count: int

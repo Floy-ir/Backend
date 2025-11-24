@@ -5,6 +5,8 @@ from apps.flight_crawler.services import FlightCrawlerService
 # externals
 from externals.s3.services import MinioClientFactory
 from externals.sms.services import MockSMSServiceFactory, MelipayamakSMSServiceFactory
+from externals.eita.services import EitaService
+from externals.bale.services import BaleService
 # apps interfaces
 from apps.accounts import interfaces as accounts_interfaces
 # apps services
@@ -82,6 +84,14 @@ class Bootstrapper:
 
         _http_requester = kwargs.get('http_requester', RequestsHTTPRequester())
 
+        # Eita service
+        _eita_token = os.getenv('EITA_TOKEN', '5768337691:AAGDAe6rjxu1cUgxK4BizYi--Utc3J9v5AU')
+        _eita_service = kwargs.get('eita_service', EitaService(token=_eita_token, http_requester=_http_requester))
+
+        # Bale service
+        _bale_token = os.getenv('BALE_TOKEN', '')
+        _bale_service = kwargs.get('bale_service', BaleService(token=_bale_token, http_requester=_http_requester))
+
         # cache
         self._cache_service = kwargs.get(
             'cache_service',
@@ -98,6 +108,8 @@ class Bootstrapper:
             AccountService(
                 sms_service_factory=_sms_service_factory,
                 date_time=_date_time_utils,
+                eita_service=_eita_service,
+                bale_service=_bale_service,
             )
         )
 
