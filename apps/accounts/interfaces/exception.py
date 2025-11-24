@@ -87,6 +87,6 @@ class UnsupportedMessageTypeException(BadRequest):
         super().__init__('Unsupported message type')
 
 
-class HTTPRequesterNotConfiguredException(BadRequest):
+class EitaServiceNotConfiguredException(BadRequest):
     def __init__(self):
-        super().__init__('HTTP requester is not configured')
+        super().__init__('Eita service is not configured')

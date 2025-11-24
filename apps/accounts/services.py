@@ -4,12 +4,11 @@ from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from . import interfaces
 from utils.date_time import interfaces as date_time_interfaces
-from utils.http_requester import interfaces as http_requester_interfaces
 from .models import EitaUser, User, OTP
 from externals.sms.services import MockSMSServiceFactory
 from externals.sms import interfaces as sms_interfaces
+from externals.eita import interfaces as eita_interfaces
 import logging
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ class AccountService(interfaces.AbstractAccountService):
                  claim: interfaces.Session = None,
                  session_life_time_in_second: int = 24 * 60 * 60,
                  sms_service_factory: sms_interfaces.AbstractSMSServiceFactory = None,
-                 http_requester: http_requester_interfaces.AbstractHTTPRequester = None,
+                 eita_service: eita_interfaces.AbstractEitaService = None,
                  ):
         self.claim = claim
         self.session_life_time_in_second = session_life_time_in_second
@@ -28,7 +27,7 @@ class AccountService(interfaces.AbstractAccountService):
             sms_service_factory = MockSMSServiceFactory()
         self.sms_service = sms_service_factory.get_sms_service()
         self.date_time_utils = date_time
-        self.http_requester = http_requester 
+        self.eita_service = eita_service 
     
     def send_otp(self, request: interfaces.SendOTPRequest) -> interfaces.SendOTPResponse:
         """
@@ -313,8 +312,9 @@ class AccountService(interfaces.AbstractAccountService):
             logger.warning(f"Unsupported message type: {request.message_type}")
             raise interfaces.UnsupportedMessageTypeException()
         
-        # Get Eita token from environment
-        eita_token = os.getenv('EITA_TOKEN', '5768337691:AAGDAe6rjxu1cUgxK4BizYi--Utc3J9v5AU')
+        if not self.eita_service:
+            logger.error("Eita service is not configured")
+            raise interfaces.EitaServiceNotConfiguredException()
         
         # Default message text if not provided
         message_text = request.text or "سلام \n  این یک پیام تست است"
@@ -324,10 +324,6 @@ class AccountService(interfaces.AbstractAccountService):
         
         sent_count = 0
         failed_count = 0
-        
-        if not self.http_requester:
-            logger.error("HTTP requester is not configured")
-            raise interfaces.HTTPRequesterNotConfiguredException()
         
         for user in users:
             try:
@@ -339,35 +335,17 @@ class AccountService(interfaces.AbstractAccountService):
                     failed_count += 1
                     continue
                 
-                # Prepare request payload
-                payload = {
-                    "token": eita_token,
-                    "chat_id": chat_id,
-                    "text": message_text
-                }
+                # Send message via Eita service
+                success = self.eita_service.send_message(chat_id=chat_id, text=message_text)
                 
-                # Send HTTP POST request to Eita API
-                response = self.http_requester.post(
-                    url="https://eitaayar.ir/api/app/sendMessage",
-                    json=payload,
-                    parse_response_as_json=True,
-                    timeout=(10, 30)
-                )
-                
-                # Check if request was successful
-                if response.status_code == 200 and response.content_json:
-                    result = response.content_json
-                    if result.get("ok") == True and result.get("result") == "success":
-                        # Mark message as sent
-                        user.initial_message_sent = True
-                        user.save()
-                        sent_count += 1
-                        logger.info(f"Successfully sent message to Eita user {user.uid} (chat_id: {chat_id})")
-                    else:
-                        logger.warning(f"Failed to send message to Eita user {user.uid} (chat_id: {chat_id}): {result}")
-                        failed_count += 1
+                if success:
+                    # Mark message as sent
+                    user.initial_message_sent = True
+                    user.save()
+                    sent_count += 1
+                    logger.info(f"Successfully sent message to Eita user {user.uid} (chat_id: {chat_id})")
                 else:
-                    logger.warning(f"HTTP request failed for Eita user {user.uid} (chat_id: {chat_id}): status_code={response.status_code}")
+                    logger.warning(f"Failed to send message to Eita user {user.uid} (chat_id: {chat_id})")
                     failed_count += 1
                     
             except Exception as e:
