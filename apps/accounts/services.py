@@ -4,10 +4,11 @@ from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from . import interfaces
 from utils.date_time import interfaces as date_time_interfaces
-from .models import EitaUser, User, OTP
+from .models import EitaUser, BaleUser, User, OTP
 from externals.sms.services import MockSMSServiceFactory
 from externals.sms import interfaces as sms_interfaces
 from externals.eita import interfaces as eita_interfaces
+from externals.bale import interfaces as bale_interfaces
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ class AccountService(interfaces.AbstractAccountService):
                  session_life_time_in_second: int = 24 * 60 * 60,
                  sms_service_factory: sms_interfaces.AbstractSMSServiceFactory = None,
                  eita_service: eita_interfaces.AbstractEitaService = None,
+                 bale_service: bale_interfaces.AbstractBaleService = None,
                  ):
         self.claim = claim
         self.session_life_time_in_second = session_life_time_in_second
@@ -27,7 +29,8 @@ class AccountService(interfaces.AbstractAccountService):
             sms_service_factory = MockSMSServiceFactory()
         self.sms_service = sms_service_factory.get_sms_service()
         self.date_time_utils = date_time
-        self.eita_service = eita_service 
+        self.eita_service = eita_service
+        self.bale_service = bale_service 
     
     def send_otp(self, request: interfaces.SendOTPRequest) -> interfaces.SendOTPResponse:
         """
@@ -354,6 +357,86 @@ class AccountService(interfaces.AbstractAccountService):
         
         logger.info(f"Eita message sending completed. Sent: {sent_count}, Failed: {failed_count}")
         return interfaces.SendEitaMessageResponse(
+            success=True,
+            sent_count=sent_count,
+            failed_count=failed_count
+        )
+
+    def bale_login(self, request: interfaces.BaleLoginRequest) -> interfaces.BaleLoginResponse:
+        """
+        Login user with Bale ID and password.
+        """
+        # Find user by Bale ID
+        current_time = self.date_time_utils.get_current_timestamp()
+
+        try:
+            user = BaleUser.objects.get(bale_id=request.bale_id)
+            user.last_login_at = current_time
+            user.save()
+        except BaleUser.DoesNotExist:
+            user = BaleUser.objects.create(
+                uid=str(uuid4()),
+                bale_id=request.bale_id,
+                created_at=current_time,
+                last_login_at=current_time
+            )
+
+        if request.mobile != None: 
+            user.mobile = request.mobile 
+            user.save()
+
+        return interfaces.BaleLoginResponse(success=True)
+
+    def send_bale_message(self, request: interfaces.SendBaleMessageRequest) -> interfaces.SendBaleMessageResponse:
+        """
+        Send message to Bale users who haven't received initial message.
+        """
+        if request.message_type != interfaces.BaleTypeMessage.INITIAL:
+            logger.warning(f"Unsupported message type: {request.message_type}")
+            raise interfaces.UnsupportedMessageTypeException()
+        
+        if not self.bale_service:
+            logger.error("Bale service is not configured")
+            raise interfaces.BaleServiceNotConfiguredException()
+        
+        # Default message text if not provided
+        message_text = request.text or "سلام \n  این یک پیام تست است"
+        
+        # Get all users who haven't received initial message
+        users = BaleUser.objects.filter(initial_message_sent=False)
+        
+        sent_count = 0
+        failed_count = 0
+        
+        for user in users:
+            try:
+                # Convert bale_id to integer (chat_id)
+                try:
+                    chat_id = int(user.bale_id)
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid bale_id for user {user.uid}: {user.bale_id}")
+                    failed_count += 1
+                    continue
+                
+                # Send message via Bale service
+                success = self.bale_service.send_message(chat_id=chat_id, text=message_text)
+                
+                if success:
+                    # Mark message as sent
+                    user.initial_message_sent = True
+                    user.save()
+                    sent_count += 1
+                    logger.info(f"Successfully sent message to Bale user {user.uid} (chat_id: {chat_id})")
+                else:
+                    logger.warning(f"Failed to send message to Bale user {user.uid} (chat_id: {chat_id})")
+                    failed_count += 1
+                    
+            except Exception as e:
+                logger.error(f"Error sending message to Bale user {user.uid}: {str(e)}")
+                failed_count += 1
+        
+        logger.info(f"Bale message sending completed. Sent: {sent_count}, Failed: {failed_count}")
+        return interfaces.SendBaleMessageResponse(
             success=True,
             sent_count=sent_count,
             failed_count=failed_count

@@ -56,3 +56,15 @@ class AccountViewSet(viewsets.GenericViewSet):
         send_message_request = interfaces.SendEitaMessageRequest(**request.data)
         results = service.send_eita_message(send_message_request)
         return response.Response(results.model_dump())
+
+    def bale_login(self, request):
+        service = get_bootstrapper().get_account_service()
+        bale_login_request = interfaces.BaleLoginRequest(**request.data)
+        results = service.bale_login(bale_login_request)
+        return response.Response(results.model_dump())
+
+    def send_bale_message(self, request):
+        service = get_bootstrapper().get_account_service()
+        send_message_request = interfaces.SendBaleMessageRequest(**request.data)
+        results = service.send_bale_message(send_message_request)
+        return response.Response(results.model_dump())

@@ -90,3 +90,8 @@ class UnsupportedMessageTypeException(BadRequest):
 class EitaServiceNotConfiguredException(BadRequest):
     def __init__(self):
         super().__init__('Eita service is not configured')
+
+
+class BaleServiceNotConfiguredException(BadRequest):
+    def __init__(self):
+        super().__init__('Bale service is not configured')

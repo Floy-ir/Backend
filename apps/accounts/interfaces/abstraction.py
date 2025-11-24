@@ -38,3 +38,8 @@ class AbstractAccountService(ABC):
     def send_eita_message(self, request: dataclass.SendEitaMessageRequest) -> dataclass.SendEitaMessageResponse:
         """Send message to Eita users who haven't received initial message."""
         pass
+    
+    @abstractmethod
+    def send_bale_message(self, request: dataclass.SendBaleMessageRequest) -> dataclass.SendBaleMessageResponse:
+        """Send message to Bale users who haven't received initial message."""
+        pass
