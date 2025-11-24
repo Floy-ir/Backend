@@ -43,6 +43,7 @@ class EitaUser(models.Model):
     mobile = models.CharField(max_length=32, blank=True, null=True)
     created_at = models.PositiveBigIntegerField(default=0)
     last_login_at = models.PositiveBigIntegerField(default=0)
+    initial_message_sent = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'accounts_eita_user'

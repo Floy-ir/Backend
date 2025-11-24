@@ -146,3 +146,18 @@ class EitaLoginRequest(dataclasses.BaseModel):
 
 class EitaLoginResponse(dataclasses.BaseModel):
     success: bool
+
+
+class EitaTypeMessage(str, Enum):
+    INITIAL = 'initial'
+
+
+class SendEitaMessageRequest(dataclasses.BaseModel):
+    message_type: EitaTypeMessage = EitaTypeMessage.INITIAL
+    text: str | None = None
+
+
+class SendEitaMessageResponse(dataclasses.BaseModel):
+    success: bool
+    sent_count: int
+    failed_count: int

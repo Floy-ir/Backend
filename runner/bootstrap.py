@@ -98,6 +98,7 @@ class Bootstrapper:
             AccountService(
                 sms_service_factory=_sms_service_factory,
                 date_time=_date_time_utils,
+                http_requester=_http_requester,
             )
         )
 

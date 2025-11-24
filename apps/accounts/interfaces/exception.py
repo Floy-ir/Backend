@@ -80,3 +80,13 @@ class OTPVerificationRequiredException(BadRequest):
 class SMSServiceFailedException(BadRequest):
     def __init__(self):
         super().__init__('Failed to send SMS')
+
+
+class UnsupportedMessageTypeException(BadRequest):
+    def __init__(self):
+        super().__init__('Unsupported message type')
+
+
+class HTTPRequesterNotConfiguredException(BadRequest):
+    def __init__(self):
+        super().__init__('HTTP requester is not configured')

@@ -50,3 +50,9 @@ class AccountViewSet(viewsets.GenericViewSet):
         eita_login_request = interfaces.EitaLoginRequest(**request.data)
         results = service.eita_login(eita_login_request)
         return response.Response(results.model_dump())
+
+    def send_eita_message(self, request):
+        service = get_bootstrapper().get_account_service()
+        send_message_request = interfaces.SendEitaMessageRequest(**request.data)
+        results = service.send_eita_message(send_message_request)
+        return response.Response(results.model_dump())
