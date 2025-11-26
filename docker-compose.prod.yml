@@ -236,6 +236,7 @@ services:
       timeout: 30s
       retries: 3
     environment:
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-floy_rabbitmq_cookie_2024_secure_string_min_20_chars}
       RABBITMQ_LOG_BASE: /var/log/rabbitmq
       RABBITMQ_MNESIA_BASE: /var/lib/rabbitmq/mnesia
       RABBITMQ_CONSUMER_TIMEOUT: 7200000
