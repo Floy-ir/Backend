@@ -17,4 +17,6 @@ urlpatterns = [
     path('send-eita-message/', views.AccountViewSet.as_view({'post': 'send_eita_message'}), name='send-eita-message'),
     path('bale/', views.AccountViewSet.as_view({'post': 'bale_login'}), name='bale-login'),
     path('send-bale-message/', views.AccountViewSet.as_view({'post': 'send_bale_message'}), name='send-bale-message'),
+    path('telegram/', views.AccountViewSet.as_view({'post': 'telegram_login'}), name='telegram-login'),
+    path('send-telegram-message/', views.AccountViewSet.as_view({'post': 'send_telegram_message'}), name='send-telegram-message'),
 ]

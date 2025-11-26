@@ -210,6 +210,8 @@ services:
     networks:
       floy_network:
         ipv4_address: 172.20.0.4
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-floy_rabbitmq_cookie_2024_secure_string_min_20_chars}
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 30s

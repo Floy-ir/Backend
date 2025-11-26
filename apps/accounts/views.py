@@ -68,3 +68,15 @@ class AccountViewSet(viewsets.GenericViewSet):
         send_message_request = interfaces.SendBaleMessageRequest(**request.data)
         results = service.send_bale_message(send_message_request)
         return response.Response(results.model_dump())
+
+    def telegram_login(self, request):
+        service = get_bootstrapper().get_account_service()
+        telegram_login_request = interfaces.TelegramLoginRequest(**request.data)
+        results = service.telegram_login(telegram_login_request)
+        return response.Response(results.model_dump())
+
+    def send_telegram_message(self, request):
+        service = get_bootstrapper().get_account_service()
+        send_message_request = interfaces.SendTelegramMessageRequest(**request.data)
+        results = service.send_telegram_message(send_message_request)
+        return response.Response(results.model_dump())
