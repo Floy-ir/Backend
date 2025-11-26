@@ -4,11 +4,12 @@ from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from . import interfaces
 from utils.date_time import interfaces as date_time_interfaces
-from .models import EitaUser, BaleUser, User, OTP
+from .models import EitaUser, BaleUser, TelegramUser, User, OTP
 from externals.sms.services import MockSMSServiceFactory
 from externals.sms import interfaces as sms_interfaces
 from externals.eita import interfaces as eita_interfaces
 from externals.bale import interfaces as bale_interfaces
+from externals.telegram import interfaces as telegram_interfaces
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class AccountService(interfaces.AbstractAccountService):
                  sms_service_factory: sms_interfaces.AbstractSMSServiceFactory = None,
                  eita_service: eita_interfaces.AbstractEitaService = None,
                  bale_service: bale_interfaces.AbstractBaleService = None,
+                 telegram_service: telegram_interfaces.AbstractTelegramService = None,
                  ):
         self.claim = claim
         self.session_life_time_in_second = session_life_time_in_second
@@ -30,7 +32,8 @@ class AccountService(interfaces.AbstractAccountService):
         self.sms_service = sms_service_factory.get_sms_service()
         self.date_time_utils = date_time
         self.eita_service = eita_service
-        self.bale_service = bale_service 
+        self.bale_service = bale_service
+        self.telegram_service = telegram_service 
     
     def send_otp(self, request: interfaces.SendOTPRequest) -> interfaces.SendOTPResponse:
         """
@@ -437,6 +440,86 @@ class AccountService(interfaces.AbstractAccountService):
         
         logger.info(f"Bale message sending completed. Sent: {sent_count}, Failed: {failed_count}")
         return interfaces.SendBaleMessageResponse(
+            success=True,
+            sent_count=sent_count,
+            failed_count=failed_count
+        )
+
+    def telegram_login(self, request: interfaces.TelegramLoginRequest) -> interfaces.TelegramLoginResponse:
+        """
+        Login user with Telegram ID and password.
+        """
+        # Find user by Telegram ID
+        current_time = self.date_time_utils.get_current_timestamp()
+
+        try:
+            user = TelegramUser.objects.get(telegram_id=request.telegram_id)
+            user.last_login_at = current_time
+            user.save()
+        except TelegramUser.DoesNotExist:
+            user = TelegramUser.objects.create(
+                uid=str(uuid4()),
+                telegram_id=request.telegram_id,
+                created_at=current_time,
+                last_login_at=current_time
+            )
+
+        if request.mobile != None: 
+            user.mobile = request.mobile 
+            user.save()
+
+        return interfaces.TelegramLoginResponse(success=True)
+
+    def send_telegram_message(self, request: interfaces.SendTelegramMessageRequest) -> interfaces.SendTelegramMessageResponse:
+        """
+        Send message to Telegram users who haven't received initial message.
+        """
+        if request.message_type != interfaces.TelegramTypeMessage.INITIAL:
+            logger.warning(f"Unsupported message type: {request.message_type}")
+            raise interfaces.UnsupportedMessageTypeException()
+        
+        if not self.telegram_service:
+            logger.error("Telegram service is not configured")
+            raise interfaces.TelegramServiceNotConfiguredException()
+        
+        # Default message text if not provided
+        message_text = request.text or "سلام \n  این یک پیام تست است"
+        
+        # Get all users who haven't received initial message
+        users = TelegramUser.objects.filter(initial_message_sent=False)
+        
+        sent_count = 0
+        failed_count = 0
+        
+        for user in users:
+            try:
+                # Convert telegram_id to integer (chat_id)
+                try:
+                    chat_id = int(user.telegram_id)
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid telegram_id for user {user.uid}: {user.telegram_id}")
+                    failed_count += 1
+                    continue
+                
+                # Send message via Telegram service
+                success = self.telegram_service.send_message(chat_id=chat_id, text=message_text)
+                
+                if success:
+                    # Mark message as sent
+                    user.initial_message_sent = True
+                    user.save()
+                    sent_count += 1
+                    logger.info(f"Successfully sent message to Telegram user {user.uid} (chat_id: {chat_id})")
+                else:
+                    logger.warning(f"Failed to send message to Telegram user {user.uid} (chat_id: {chat_id})")
+                    failed_count += 1
+                    
+            except Exception as e:
+                logger.error(f"Error sending message to Telegram user {user.uid}: {str(e)}")
+                failed_count += 1
+        
+        logger.info(f"Telegram message sending completed. Sent: {sent_count}, Failed: {failed_count}")
+        return interfaces.SendTelegramMessageResponse(
             success=True,
             sent_count=sent_count,
             failed_count=failed_count

@@ -95,3 +95,8 @@ class EitaServiceNotConfiguredException(BadRequest):
 class BaleServiceNotConfiguredException(BadRequest):
     def __init__(self):
         super().__init__('Bale service is not configured')
+
+
+class TelegramServiceNotConfiguredException(BadRequest):
+    def __init__(self):
+        super().__init__('Telegram service is not configured')

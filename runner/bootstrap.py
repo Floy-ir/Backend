@@ -7,6 +7,7 @@ from externals.s3.services import MinioClientFactory
 from externals.sms.services import MockSMSServiceFactory, MelipayamakSMSServiceFactory
 from externals.eita.services import EitaService
 from externals.bale.services import BaleService
+from externals.telegram.services import TelegramService
 # apps interfaces
 from apps.accounts import interfaces as accounts_interfaces
 # apps services
@@ -92,6 +93,10 @@ class Bootstrapper:
         _bale_token = os.getenv('BALE_TOKEN', '')
         _bale_service = kwargs.get('bale_service', BaleService(token=_bale_token, http_requester=_http_requester))
 
+        # Telegram service
+        _telegram_token = os.getenv('TELEGRAM_TOKEN', '')
+        _telegram_service = kwargs.get('telegram_service', TelegramService(token=_telegram_token, http_requester=_http_requester))
+
         # cache
         self._cache_service = kwargs.get(
             'cache_service',
@@ -110,6 +115,7 @@ class Bootstrapper:
                 date_time=_date_time_utils,
                 eita_service=_eita_service,
                 bale_service=_bale_service,
+                telegram_service=_telegram_service,
             )
         )
 

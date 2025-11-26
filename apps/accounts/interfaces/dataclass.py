@@ -184,3 +184,26 @@ class SendBaleMessageResponse(dataclasses.BaseModel):
     success: bool
     sent_count: int
     failed_count: int
+
+
+class TelegramLoginRequest(dataclasses.BaseModel):
+    telegram_id: str
+    mobile: str | None = None
+
+class TelegramLoginResponse(dataclasses.BaseModel):
+    success: bool
+
+
+class TelegramTypeMessage(str, Enum):
+    INITIAL = 'initial'
+
+
+class SendTelegramMessageRequest(dataclasses.BaseModel):
+    message_type: TelegramTypeMessage = TelegramTypeMessage.INITIAL
+    text: str | None = None
+
+
+class SendTelegramMessageResponse(dataclasses.BaseModel):
+    success: bool
+    sent_count: int
+    failed_count: int

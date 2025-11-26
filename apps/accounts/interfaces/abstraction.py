@@ -43,3 +43,8 @@ class AbstractAccountService(ABC):
     def send_bale_message(self, request: dataclass.SendBaleMessageRequest) -> dataclass.SendBaleMessageResponse:
         """Send message to Bale users who haven't received initial message."""
         pass
+    
+    @abstractmethod
+    def send_telegram_message(self, request: dataclass.SendTelegramMessageRequest) -> dataclass.SendTelegramMessageResponse:
+        """Send message to Telegram users who haven't received initial message."""
+        pass
