@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import User, OTP, EitaUser
+from .models import User, OTP, EitaUser, TelegramUser, BaleUser
 
 
 @admin.register(User)
@@ -104,6 +104,22 @@ class OTPAdmin(admin.ModelAdmin):
 class EitaUserAdmin(admin.ModelAdmin):
     list_display = ("uid", "created_at", "last_login_at")
     search_fields = ("uid",)
+    readonly_fields = ("uid",)
+    ordering = ("-created_at",)
+
+
+@admin.register(TelegramUser)
+class TelegramUserAdmin(admin.ModelAdmin):
+    list_display = ("uid", "telegram_id", "mobile", "created_at", "last_login_at", "initial_message_sent")
+    search_fields = ("uid", "telegram_id", "mobile")
+    readonly_fields = ("uid",)
+    ordering = ("-created_at",)
+
+
+@admin.register(BaleUser)
+class BaleUserAdmin(admin.ModelAdmin):
+    list_display = ("uid", "bale_id", "mobile", "created_at", "last_login_at", "initial_message_sent")
+    search_fields = ("uid", "bale_id", "mobile")
     readonly_fields = ("uid",)
     ordering = ("-created_at",)
 
