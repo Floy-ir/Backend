@@ -16,14 +16,22 @@ def crawl_three_days_ahead():
     try:
         # Read routes from environment variable - check for instance-specific variables
         routes = None
-        # Check for CRAWL_ROUTES_THREE_1 or CRAWL_ROUTES_THREE_2
-        crawl_routes_env = os.getenv("CRAWL_ROUTES_THREE_1") or os.getenv("CRAWL_ROUTES_THREE_2") or ""
+        # Determine which instance we're running in and use the corresponding environment variable
+        beat_instance = os.getenv("BEAT_INSTANCE", "")
+        if beat_instance == "1":
+            crawl_routes_env = os.getenv("CRAWL_ROUTES_THREE_1", "")
+        elif beat_instance == "2":
+            crawl_routes_env = os.getenv("CRAWL_ROUTES_THREE_2", "")
+        else:
+            # Fallback: check both (for backward compatibility)
+            crawl_routes_env = os.getenv("CRAWL_ROUTES_THREE_1") or os.getenv("CRAWL_ROUTES_THREE_2") or ""
+        
         if crawl_routes_env:
             try:
                 routes = json.loads(crawl_routes_env)
-                logger.info(f"Using {len(routes)} route(s) from CRAWL_ROUTES environment variable")
+                logger.info(f"Using {len(routes)} route(s) from CRAWL_ROUTES_THREE_{beat_instance} environment variable")
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse CRAWL_ROUTES: {e}. Will crawl all routes.")
+                logger.error(f"Failed to parse CRAWL_ROUTES_THREE_{beat_instance}: {e}. Will crawl all routes.")
         
         bootstrapper = get_bootstrapper()
         service = bootstrapper.get_flight_crawler_service()

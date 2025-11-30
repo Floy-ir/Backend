@@ -121,6 +121,7 @@ services:
       - .env
     environment:
       - BEAT_ROLE=three_days
+      - BEAT_INSTANCE=1
       - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
       - C_FORCE_ROOT=true
       - PYTHONUNBUFFERED=1
@@ -160,6 +161,7 @@ services:
       - .env
     environment:
       - BEAT_ROLE=three_days
+      - BEAT_INSTANCE=2
       - BEAT_SCHEDULE_FILE=/app/celerybeat-data/celerybeat-schedule
       - C_FORCE_ROOT=true
       - PYTHONUNBUFFERED=1
